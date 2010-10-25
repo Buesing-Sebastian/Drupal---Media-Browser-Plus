@@ -1,0 +1,11 @@
+; $Id ;
+
+name = Media Browser Plus
+description = Provides better UX for the media browser
+package = "Media"
+core = 7.x
+files[] = media_browser_plus.module
+files[] = media_browser_plus.install
+dependencies[] = media
+dependencies[] = taxonomy
+
