@@ -1,5 +1,5 @@
 <?php
-// $Id$ 
+// $Id$
 
 /**
  * @file
@@ -19,8 +19,8 @@ function media_browser_plus_install() {
  * Make sure the field_tags field exists and is of the right type.
  */
 function _media_browser_plus_ensure_field_tags() {
-  // Make sure the 'tags' vocabulary exists.
-  $vocabulary = taxonomy_vocabulary_machine_name_load('tags');
+  // Make sure the 'tags' vocabulary exists. Low level method to avoid cache hit.
+  $vocabulary = reset(entity_load('taxonomy_vocabulary', NULL, array('machine_name' => 'tags'), TRUE));
   if (!$vocabulary) {
     $description = st('Use tags to group articles on similar topics into categories.');
     $help = st('Enter a comma-separated list of words to describe your content.');
@@ -82,7 +82,7 @@ function _media_browser_plus_ensure_field_folder() {
     $media_root_term->description = 'default media folder';
     $media_root_term->vid = $vocabulary->vid;
     $media_root_term->weight = '-10';
-    // save (default folder) term  
+    // save (default folder) term
     taxonomy_term_save($media_root_term);
     // @TODO: put all media files into default folder
   }
@@ -142,11 +142,11 @@ function _media_browser_plus_ensure_instance($instance) {
  */
 function media_browser_plus_enable()
 {
-	
+
 }
 
 /**
- * 
+ *
  * @TODO: discuss if this should be done
  */
 function media_browser_plus_uninstall()
