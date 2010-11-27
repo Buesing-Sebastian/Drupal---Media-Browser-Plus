@@ -4,7 +4,9 @@ jQuery(document).ready(function() {
     // define our base variables to work with
     var $gallery = jQuery( "#media-admin-gallery" ),
       $folder = jQuery( "#folder" ),
-      $activeFolder = jQuery( "div.folder_load:first");
+      $activeFolder = jQuery( "div.folder_load:first")
+      $url = jQuery("#js_base_href").attr('value'),
+      $currentPage = 1; // counting from 1 upwards
     // let the gallery items be draggable
     jQuery( "li", $gallery ).draggable({
         cancel: "a.ui-icon", // clicking an icon won't initiate dragging
@@ -16,7 +18,7 @@ jQuery(document).ready(function() {
     // load active folder
     if($activeFolder){
       $activeFolder = null;
-      loadFolderContents(jQuery( "div.folder_load:first"));
+      loadFolderContents(jQuery( "div.folder_load:first"), 1);
     }
     	
       
@@ -28,7 +30,7 @@ jQuery(document).ready(function() {
         $folder.removeClass('dragOverDrop');
         // send the change media folder request
         // @TODO: think about some success/error UI Feedback
-        jQuery.post("/?q=admin/content/media/change_category", { media: $id, folder: $folder.attr('id') },
+        jQuery.post($url + "?q=admin/content/media/change_category", { media: $id, folder: $folder.attr('id') },
           function(data){
             // which would be applied here
          });	
@@ -36,7 +38,7 @@ jQuery(document).ready(function() {
         $item.fadeOut();
     }
     //
-    function loadFolderContents($item){
+    function loadFolderContents($item, $page){
       // check against double loading of the same folder
       if($activeFolder == $item)
        return;
@@ -53,22 +55,29 @@ jQuery(document).ready(function() {
       });
       // @TODO: add some kind of loading UI and failure handling here
       // and load in new ones
-      jQuery.post("/drupal7a/?q=admin/content/media/thumbnailsJSON", { folder: $item.attr('id') },
+      jQuery.post($url + "?q=admin/content/media/thumbnailsJSON", { folder: $item.attr('id')},
         function(data){
           // for each loaded item...
           jQuery(data).each(function(index){
           // grab item
           var $item = jQuery(this);
           // append it to the gallery and do a fadein
-          $item.appendTo( $gallery ).fadeIn();
-          // make it draggable 
-            $item.draggable({
+          if($item.attr('id') == 'resultCount')
+          {
+            jQuery('#media_browser_plus_pages').html('Results: ' + $item.html())
+          }
+          else
+          {
+            $item.appendTo( $gallery ).fadeIn();
+            // make it draggable 
+              $item.draggable({
               cancel: "a.ui-icon", // clicking an icon won't initiate dragging
               revert: "invalid", // when not dropped, the item will revert back to its initial position
               containment: "document", // stick to demo-frame if present
               helper: "clone",
               cursor: "move"
             });
+          }
          });
       });
     }
@@ -90,7 +99,7 @@ jQuery(document).ready(function() {
     // grab item
     var $item = jQuery( this );
     // and load contents
-    loadFolderContents($item);
+    loadFolderContents($item, 1);
     return false;
   });
   

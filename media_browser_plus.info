@@ -8,4 +8,5 @@ files[] = media_browser_plus.module
 files[] = media_browser_plus.install
 dependencies[] = media
 dependencies[] = taxonomy
+dependencies[] = comment
 

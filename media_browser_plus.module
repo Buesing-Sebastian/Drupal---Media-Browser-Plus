@@ -1,5 +1,5 @@
 <?php
-// $Id$
+// $Id$ 
 
 /**
  * @file
@@ -11,34 +11,42 @@
  * Alter the media browser from to enable new UI
  */
 function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
-  // not yet implemented for list view
-  if($form_state['build_info']['args'][0] != 'thumbnails')
-    return;
+  // add css for both views
+  $path = drupal_get_path('module', 'media_browser_plus');
+  $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
+  // check which mode we are in
+  if(isset($form_state['build_info']['args'][0]) &&
+    $form_state['build_info']['args'][0] != 'thumbnails')
+    return _media_browser_plus_media_admin_list_alter($form, $form_state);
   // removing the options part
-  // this is not needed any more
+  // since this is not needed any more
   unset($form['options']);
   // adding our js and css
-  $path = drupal_get_path('module', 'media_browser_plus');
   $form['#attached'] = array_merge($form['#attached'],array(
     'js' => array($path . '/js/media_browser_plus.admin.js', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.6/jquery-ui.min.js')
   ));
-  $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
   // remove all checkboxes from the thumbnails since
   // we operate with drag and drop instead
   foreach($form['admin']['files'] as $key => $file){
     if(is_array($file)){
       $form['admin']['files'][$key]['#type'] = 'hidden';
       $form['admin']['files'][$key]['#value'] = $key;
-
+      
     }
   }
+  // set base href for javascript requests
+  $form['js_base_href'] = array(
+    '#type' => 'hidden',
+    '#value' => $path = "http://" . $_SERVER['HTTP_HOST'] . base_path(),
+    '#attributes' => array('id' => 'js_base_href')
+  );
   // alter the file prefix. UI requires list to have an id
   $form['admin']['files']['#prefix'] = '<div class="media-display-thumbnails media-clear clearfix">
     <ul id="media-admin-gallery" class="media-list-thumbnails">';
   // load the media folders
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
-  $categories = taxonomy_get_tree($vocabulary->vid);
-  $list = _media_browser_plus_create_relationship_list($categories);
+  $folders = taxonomy_get_tree($vocabulary->vid);
+  $list = _media_browser_plus_create_relationship_list($folders);
   $folders = _media_browser_plus_folder_hierarchy_list($list);
   // build the folder form
   $form['admin']['folder'] = array(
@@ -48,30 +56,170 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   // setting up the header
   $header = array(
     array(
-      'data' => st('Categories'),
+      'data' => t('Categories'), 
       'width' => '200'
-    ),
+    ), 
     array(
-      'data' => st('Media Files'),
+      'data' => t('Media Files'), 
       'width' => '*'
     ));
-  // and the date
+  // and the data
   $options = array(array(
-    'categories' => array('data' => drupal_render($form['admin']['folder']), 'class' => array('media_column')),
-    'media' => array('data' => drupal_render($form['admin']['files']), 'class' => array('media_column'))
-  ));
+      'categories' => array(
+        'data' => drupal_render($form['admin']['folder']), 
+        'class' => array('media_column')),
+      'media' => array(
+        'data' => drupal_render($form['admin']['files']), 
+        'class' => array('media_column'))
+    ),array(
+      'categories' => array(
+        'data' => ''),
+      'media' => array(
+        'data' => 'pages', 
+        'id' => array('media_browser_plus_pages'))
+    )
+  );
   // table setup
   $table = array(
-    'header' => $header,
-    'rows' => $options,
-    'attributes' => array('id' => 'media_folder_table'),
-    'empty' => st('No media added yet.')
+    'header' => $header, 
+    'rows' => $options, 
+    'attributes' => array('id' => 'media_folder_table'), 
+    'empty' => t('No media added yet.')
   );
   // and put everything into a neat little table
   $form['admin'] = array(
     '#type' => 'markup',
     '#markup' => theme('table', $table)
   );
+  //
+  return $form;
+}
+
+/**
+ * used to alter the media list display
+ */
+function _media_browser_plus_media_admin_list_alter(&$form, &$form_state)
+{
+  $header = array(
+    'title' => array('data' => t('Title'), 'field' => 'f.filename'),
+    'type' => array('data' => t('Type'), 'field' => 'f.filemime'),
+    'folder' => array('data' => t('Folder')),
+    'size' => array('data' => t('Size'), 'field' => 'f.filesize'),
+    'author' => array('data' => t('Author'), 'field' => 'u.name'),
+    'timestamp' => array('data' => t('Updated'), 'field' => 'f.timestamp', 'sort' => 'asc'),
+    'operations' => array('data' => t('Operations')),
+  );
+  $query = db_select('file_managed', 'f')->extend('PagerDefault')->extend('TableSort');
+  $query->join('users', 'u', 'f.uid = u.uid');
+
+  $query
+    ->fields('f')
+    ->fields('u', array('name'))
+    ->limit(50)
+    ->orderByHeader($header);
+   
+  // looking for a filter
+  if(isset($_SESSION['media-filter'])){ 
+    if(strlen($_SESSION['media-filter']['filename'])){
+      $query->condition('f.filename', "%".$_SESSION['media-filter']['filename']."%", 'LIKE');
+    }
+    if(count($_SESSION['media-filter']['type'])){
+      $query->condition('f.type', explode(",", $_SESSION['media-filter']['type']), 'IN');
+    }
+    if(count($_SESSION['media-filter']['field_folder'])){
+      // filtering media folders is in plaining here
+    }
+  }
+  // execution the query after applying a possible filter
+  $result = $query->execute();
+  
+  $destination = drupal_get_destination();
+  $files = array();
+  $options = array();
+  // gather file ids
+  foreach ($result as $file) {
+    $files[] = $file->fid;
+  }
+  // use ids to load media
+  $media_entities = media_load_multiple($files);
+  
+  foreach($media_entities as $media){
+    // load folder name
+    $folder = "";
+    if(isset($media->field_folder[LANGUAGE_NONE][0]['tid']) &&
+      ($term = taxonomy_term_load($media->field_folder[LANGUAGE_NONE][0]['tid']))){
+        $folder = $term->name;
+    } 
+    $options[$media->fid] = array(
+      'title' => theme('media_link', array('file' => $media)),
+      'folder' => $folder,
+      'type' =>  check_plain($media->filemime),
+      'size' => format_size($media->filesize),
+      'author' => theme('username', array('account' => $media)),
+      'timestamp' => format_date($media->timestamp, 'short'),
+    );
+    $options[$media->fid]['operations'] = l(t('edit'), 'media/' . $media->fid . '/edit', array('query' => $destination));
+  }
+  // grab old options
+  $ops = $form['options']['operation']['#options'];
+  // redo the options form
+  unset($form['options']);
+  $form['options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Operations'),
+    '#weight' => -10,
+  
+    'operations' => array(
+      '#type' => 'container',
+      '#prefix' => '<div class="container-inline">',
+      '#suffix' => '</div>',
+  
+      'operation' => array(
+        '#type' => 'select',
+        '#options' => $ops,
+        '#default_value' => 'delete',
+      ),
+      'submit' => array(
+       '#type' => 'submit',
+       '#value' => t('Submit'),
+       '#submit' => array('media_admin_submit'),
+       '#validate' => array('media_admin_validate')
+      )
+    ),
+    'folder' => array(
+      '#type' => 'container',
+      
+      'selected_folder' => array(
+        '#type' => 'select',
+        '#title' => t('Media Folder*'),
+        '#required' => FALSE,
+        '#options' => _media_browser_plus_folder_list()
+      ),
+      'submit' => array(
+        '#type' => 'container',
+        '#prefix' => '<div class="container-inline">',
+        '#suffix' => '</div>',
+        
+        'submit' => array(
+          '#type' => 'submit',
+          '#value' => t('Change Category'),
+          '#submit' => array('media_browser_plus_media_admin_folder_change_submit'),
+          '#validate' => array('media_admin_validate')
+        ),
+        'notice' => array(
+          '#type' => 'item',
+          '#markup' => t('*: change will be applied to ALL selected media files')
+        )
+      )
+    )
+  );
+  $form['admin']['filter'] = _media_browser_plus_media_filter_form();
+  $form['admin']['files']['#header'] = $header;
+  $form['admin']['files']['#options'] = $options;
+  
+  unset($form['admin']['pager']);
+  $form['admin']['pager'] = array('#markup' => theme('pager', array('tags' => NULL)));
+
   return $form;
 }
 
@@ -80,14 +228,14 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
  */
 function media_browser_plus_change_category(&$form, &$form_state){
   // parse values
-  $folder = (int)(str_replace("folder_load_", "", $form_state['input']['folder']));
+  $folder = (int) (str_replace("folder_load_", "", $form_state['input']['folder']));
   $media = media_load((int) (str_replace("edit-files-", "", $form_state['input']['media'])));
   // apply new folder
   $media->field_folder[LANGUAGE_NONE][0]['tid'] = $folder;
   // save and exit
   media_save($media);
   die("");
-
+     
 	return $form;
 }
 
@@ -96,40 +244,43 @@ function media_browser_plus_change_category(&$form, &$form_state){
  */
 function media_browser_plus_thumbnailsJSON(&$form, &$form_state){
   // parse values
-  if(isset($form_state['input']['folder'])){
+  if(isset($form_state['input']['folder'])){	
     //
-    $folder = (int)(str_replace("folder_load_", "", $form_state['input']['folder']));
-    //$entity_controller = entity_get_controller('media');
-    //$media_entities = $entity_controller->load(FALSE, array(), 0, 50);
-    $media_entities = media_load_multiple(FALSE);
-
-    foreach($media_entities as $media)
-    {
+    $folder = (int) (str_replace("folder_load_", "", $form_state['input']['folder']));
+    $entity_controller = entity_get_controller('media');
+    $media_entities = media_load_multiple();
+    //
+    $count = 0;
+    //
+    foreach($media_entities as $media){
       if($folder == 0){
         if(!isset($media->field_folder[LANGUAGE_NONE][0]['tid'])){
-          //
+          // create a hidden id input field for the Javascript
           $hidden_media_id = array("media_id" => array('#type' => 'hidden', '#value' => $media->fid));
           $return .= "<li>"
-            . drupal_render(media_get_thumbnail_preview(media_load($media->fid), TRUE))
+            . drupal_render(media_get_thumbnail_preview(media_load($media->fid), TRUE)) 
             . drupal_render($hidden_media_id)
             . "</li>";
+          $count++;
         }
       }
-      else{
+      else{ 
         if(isset($media->field_folder[LANGUAGE_NONE][0]['tid']) &&
           $media->field_folder[LANGUAGE_NONE][0]['tid'] == $folder){
-            //
+            // create a hidden id input field for the Javascript
             $hidden_media_id = array("media_id" => array('#type' => 'hidden', '#value' => $media->fid));
             $return .= "<li>"
-              . drupal_render(media_get_thumbnail_preview(media_load($media->fid), TRUE))
+              . drupal_render(media_get_thumbnail_preview(media_load($media->fid), TRUE)) 
               . drupal_render($hidden_media_id)
               . "</li>";
+            $count++;
         }
       }
     }
-
-    //echo json_encode(array("name" => "sebbo", "email" => "bamboocha1984@gmx.de", "quotes" => "<a href=\"http://www.sebbo.de\"></a>"));
-    echo $return;
+    // append overall result count
+    $return .= "<li id=\"resultCount\">".$count."</li>";
+    // replacing the false destination
+    echo str_replace("thumbnailsJSON","thumbnails", $return);
   }
   die();
 }
@@ -146,7 +297,6 @@ function media_browser_plus_form_media_add_upload_multiple_alter(&$form, &$form_
   // Change the weight of the other form items so they appear in the right order
   $form['upload']['#weight'] = 0;
   $form['submit']['#weight'] = 2;
-
   // Add an additional form submission callback that fires after the default.
   $form['#submit'][] = 'media_browser_plus_submit';
 }
@@ -187,7 +337,6 @@ function media_browser_plus_submit($form, &$form_state) {
   // Grab the fids of the newly created media entities from the redirect query
   // string that was created by the form's primary submit handler, and load the
   // corresponding entities.
-
   $fids = $form_state['redirect'][1]['query']['fid'];
   if (!is_array($fids)) {
     $fids = array($fids);
@@ -210,14 +359,14 @@ function media_browser_plus_submit($form, &$form_state) {
     foreach ($media_entities as $media) {
       $media->field_tags[LANGUAGE_NONE] = $form_state['values']['field_tags'];
     }
-
+    
   }
-
+  
   // apply folder
   foreach ($media_entities as $media) {
       $media->field_folder[LANGUAGE_NONE] = $form_state['values']['field_folder'];
   }
-
+  
   // If the new media is from a 3rd party provider, and that provider also
   // provides MRSS data about the media, then populate the title and description
   // fields from that data.
@@ -240,11 +389,11 @@ function media_browser_plus_submit($form, &$form_state) {
     }
   }
 
-
+  
   foreach ($media_entities as $media) {
     media_save($media);
   }
-
+  
 }
 
 /**
@@ -310,18 +459,18 @@ function media_browser_plus_preprocess_media_thumbnail(&$variables) {
  * Altering the add file upload form the include folder and tag options
  */
 function media_browser_plus_form_media_add_upload_alter(&$form, &$form_state) {
-  //
+  // alter weight to display new forms in correct order
   $form['file']['#weight'] = -5;
   $form['submit']['#weight'] = 5;
-
+  
   $form['field_tags'] = _media_browser_plus_tag_form();
   $form['field_folder'] = _media_browser_plus_folder_form();
-
+  
   $form['#submit'][] = 'media_browser_plus_submit';
 }
 
 /**
- * making sure the tagging form is below the folder form part
+ * making sure the tagging form is below the folder form part 
  */
 function media_browser_plus_form_media_edit_alter(&$form, &$form_state) {
 	// setting the weight accordingly
@@ -350,21 +499,12 @@ function _media_browser_plus_tag_form(){
 }
 
 /**
- *
+ * 
  * Enter description here ...
  */
-function _media_browser_plus_folder_form()
-{
-  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
-  $categories = taxonomy_get_tree($vocabulary->vid);
-
-  $list = array();
-  $prefixPadding = "-";
-
-  foreach($categories as $category){
-  	$pad = (($category->depth * strlen($prefixPadding)) + strlen($category->name));
-    $list[$category->tid] = str_pad($category->name, $pad, $prefixPadding, STR_PAD_LEFT);
-  }
+function _media_browser_plus_folder_form(){
+  $list = _media_browser_plus_folder_list();
+  // build form and return
   return array(
       '#type' => 'select',
       '#language' => LANGUAGE_NONE,
@@ -377,7 +517,7 @@ function _media_browser_plus_folder_form()
 }
 
 /**
- *
+ * 
  * implement hook menu
  */
 function media_browser_plus_menu(){
@@ -389,7 +529,7 @@ function media_browser_plus_menu(){
     'access callback' => 'media_access',
     'access arguments' => array('edit')
   );
-
+  
   $items['admin/content/media/thumbnailsJSON'] = array(
     'title' => 'Delete',
     'page callback' => 'drupal_get_form',
@@ -398,8 +538,57 @@ function media_browser_plus_menu(){
     'access callback' => 'media_access',
     'access arguments' => array('edit')
   );
-
+  // folder management disabled until menu bug has been fixed
+  /*
+  $items['admin/content/media/folders'] = array(
+    'title' => 'Administer folders',
+    'description' => 'Manage your media folders',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('media_browser_plus_folder_list'),
+    'file' => 'media_browser_plus.folders.inc',
+    'access arguments' => array('administer media folders'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+  
+  $items['admin/content/media/folders/add'] = array(
+    'title' => 'Add',
+    'description' => 'Add a new media folder',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('media_browser_plus_folder_admin_add'),
+    'access arguments' => array('administer media folders'),
+    'type' => MENU_CALLBACK,
+    'file' => 'media_browser_plus.folders.inc',
+  );
+  
+  $items['admin/content/media/folder/%media_browser_plus_folder/edit'] = array(
+    'title' => 'Edit',
+    'description' => 'Edit media folder',
+    'page callback' => 'drupal_get_form',
+    'page arguments'  => array('media_browser_plus_folder_admin_edit_form', 4),
+    'access arguments' => array('administer media folders'),
+    'type' => MENU_CALLBACK,
+    'file' => 'media_browser_plus.folders.inc'
+  );
+  
+  $items['admin/content/media/folder/%media_browser_plus_folder/delete'] = array(
+    'title' => 'Delete',
+    'description' => 'Delete media folder',
+    'page callback' => 'media_browser_plus_folder_admin_delete',
+    'page arguments'  => array(4),
+    'access arguments' => array('administer media folders'),
+    'type' => MENU_CALLBACK,
+    'file' => 'media_browser_plus.folders.inc'
+  );
+  */
   return $items;
+}	
+
+/**
+ * implementation of hook_load
+ * used to load media folders
+ */
+function media_browser_plus_folder_load($id){
+  return taxonomy_term_load($id);
 }
 
 /**
@@ -410,17 +599,16 @@ function _media_browser_plus_folder_hierarchy_list($list)
   if(!isset($list['parents']) || !isset($list['children']))
     return;
   //
-  if(count($list['parents']) == 0)
-  {
+  if(count($list['parents']) == 0){
   	return t('No folders created yet');
   }
   else
   {
     //
     if(_media_browser_plus_has_unsorted_media()){
-        $all_folders = array();
+      $all_folders = array();
       $all_folders[0] = new stdClass();
-      $all_folders[0]->name = st('Unsorted');
+      $all_folders[0]->name = t('Unsorted');
       $all_folders[0]->tid = 0;
       //
       $list['parents'] = array_merge($all_folders, $list['parents']);
@@ -429,56 +617,50 @@ function _media_browser_plus_folder_hierarchy_list($list)
     return _media_browser_plus_folder_hierarchy_list_helper($list['parents'], $list['children']);
     //
   }
-  //
+  //	
 }
 
 /**
- *
- *
+ * 
+ * 
  * @param $parents
  * @param $children
  * @param $hide
  */
-function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, $hide = false)
-{
+function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, $hide = false){
   //
   $path = "http://" . $_SERVER['HTTP_HOST'] . base_path() . drupal_get_path('module', 'media_browser_plus');
   //
   $buffer  = "<ul ";
-  $buffer .= $hide ? "" : "id=\"categories-example\" ";
+  
   $buffer .=" class=\"";
   $buffer .= $hide ? "hidden" : "";
   $buffer .= "\">\n";
   //
-  foreach($parents as $item)
-  {
-  	//
-  	$hasChildren = isset($children[$item->tid]);
-  	//
-  	$buffer .= "<li class=\"category";
-  	//
-  	if($hasChildren)
-  	{
-  		$buffer .= " parent\">";
-  		$buffer .= "<div class=\"folder fparent category-children-toggle\">" .
-  				   "<img src=\"".$path."/images/pixel.gif\" border=\"0\" alt=\"\">" .
-  				   "</div> ";
-  		$buffer .= "<div id=\"folder_load_".$item->tid."\" class=\"folder_load\">" . $item->name . "</div>\n";
-  		$buffer .= _media_browser_plus_folder_hierarchy_list_helper($children[$item->tid], $children, true);
-  		$buffer .= "</li>\n";
-  	}
-  	else
-  	{
-  		$buffer .= "\">";
-  		$buffer .= "<div class=\"folder category-children-toggle\">" .
-  				   "<img src=\"".$path."/images/pixel.gif\" border=\"0\" alt=\"\">" .
-  				   "</div> ";
-  		$buffer .= "<div id=\"folder_load_".$item->tid."\" class=\"folder_load\">" . $item->name . "</div></li>\n";
-  	}
+  foreach($parents as $item){
+    $hasChildren = isset($children[$item->tid]);
+    //
+    $buffer .= "<li class=\"category";
+    
+    if($hasChildren){
+      $buffer .= " parent\">";
+      $buffer .= "<div class=\"folder fparent category-children-toggle\">" . 
+         "<img src=\"".$path."/images/pixel.gif\" border=\"0\" alt=\"\">" . 
+         "</div> ";
+      $buffer .= "<div id=\"folder_load_".$item->tid."\" class=\"folder_load\">" . $item->name . "</div>\n";
+      $buffer .= _media_browser_plus_folder_hierarchy_list_helper($children[$item->tid], $children, true);
+      $buffer .= "</li>\n";
+    }
+    else {
+      $buffer .= "\">";
+      $buffer .= "<div class=\"folder category-children-toggle\">" . 
+        "<img src=\"".$path."/images/pixel.gif\" border=\"0\" alt=\"\">" . 
+        "</div> ";
+      $buffer .= "<div id=\"folder_load_".$item->tid."\" class=\"folder_load\">" . $item->name . "</div></li>\n";
+    }
   }
-  //
   $buffer .= "</ul>\n";
-  //
+  
   return $buffer;
 }
 
@@ -492,30 +674,23 @@ function _media_browser_plus_create_relationship_list($categories, $index = 'tid
   $parents 	= array();
   $children	= array();
   //
-  foreach($categories as $key=>$value)
-  {
+  foreach($categories as $key=>$value){
     // root node
-    if($value->parents[0] == 0)
-    {
+    if($value->parents[0] == 0){
       // create parent entry
       $parents[$value->$index] 	= $value;
-      // continue loop
       continue;
     }
-    else // none root node
-    {
+    else {
       // create child entry
       $children[$value->parents[0]][$value->$index] = $value;
-      //
       continue;
     }
-  }
-  //
+  } 
   $return['parents'] 	= $parents;
   $return['children'] 	= $children;
-  //
+  
   return $return;
-  //
 }
 
 /**
@@ -526,11 +701,248 @@ function _media_browser_plus_has_unsorted_media(){
   $entity_controller = entity_get_controller('media');
   $media_entities = $entity_controller->load(NULL, array(), 0, 100);
   //
-  foreach($media_entities as $media)
-  {
+  foreach($media_entities as $media){
   if(!isset($media->field_folder[LANGUAGE_NONE][0]['tid']))
     return true;
   }
   // none found
   return false;
 }
+
+/**
+ * 
+ */
+function _media_browser_plus_media_filter_form(){
+  // getting the media folders for filter selection
+  $folders = _media_browser_plus_folder_list();
+  // setting default filter selections - will be overwritten when a filter is active
+  $selected_types = array_keys(media_type_get_types());
+  $selected_folders = array_keys($folders);
+  // apply filter settings
+  if(isset($_SESSION['media-filter'])){ 
+    if(count($_SESSION['media-filter']['type'])){
+      $selected_types = explode("," ,$_SESSION['media-filter']['type']); 
+    }
+    if(count($_SESSION['media-filter']['field_folder'])){
+      $selected_folders = $_SESSION['media-filter']['field_folder'];
+    }
+  }
+  // get media types
+  $types = media_type_get_types();
+  $media_types = array();
+  
+  foreach($types as $value=>$type){
+    $media_types[$value] = $type->label;
+  }
+  
+  $form['filter'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Filter Media'),
+    '#collapsible' => TRUE,
+    '#collapsed' => !isset($_SESSION['media-filter']),
+    '#weight' => -10,
+  
+    'filename' => array(
+        '#type' => 'textfield',
+        '#title' => t('Title'),
+        '#maxlength' => 125,
+        '#size' => 40,
+        '#value' => (isset($_SESSION['media-filter']['filename']) ? 
+                     $_SESSION['media-filter']['filename'] : ""),
+        '#required' => FALSE),
+                     
+    'criterias' => array(
+      '#type' => 'container',
+  
+      'media_type' => array(
+        '#type' => 'select',
+        '#title' => t('Media Type'),
+        '#multiple' => TRUE,
+        '#options' => $media_types,
+        '#default_value' => $selected_types,
+        '#weight' => 5,
+        '#required' => FALSE,
+        '#attributes' => array('class' => array('media-filter-select')),
+        '#prefix' => '<div style="float:left; padding-right: 20px;">',
+        '#suffix' => '</div>'),
+  
+      'field_folder' => array(
+        '#type' => 'select',
+        '#title' => t('Media Folder'),
+        '#multiple' => TRUE,
+        '#required' => FALSE,
+        '#options' => $folders,
+        '#default_value' => $selected_folders,
+        '#weight' => 6,
+        '#attributes' => array('class' => array('media-filter-select')),
+        '#prefix' => '<div style="float:left; padding-right: 20px;">',
+        '#suffix' => '</div>')
+    ),
+    
+    'include_subfolders' => array(
+        '#type' => 'checkbox',
+        '#weight' => 10,
+        '#prefix' => '<div style="clear: both;">',
+        '#suffix' => '</div>',
+        '#attributes' => array('class' => array('media-filter')),
+        '#title' => t('include subfolders of selected folders'),
+        '#default_value' => (isset($_SESSION['media-filter']['include_subfolders']) ? 
+                     $_SESSION['media-filter']['include_subfolders'] : 0)
+      ),
+    
+    'actions' => array(
+      '#type' => 'container',
+      '#weight' => 11,
+      
+      'submit' => array(
+        '#type' => 'submit',
+        '#value' => t('Filter'),
+        '#submit' => array('media_browser_plus_media_filter_submit'),
+        '#validate' => array('media_browser_plus_media_filter_validate')
+      ),
+      
+    )
+  );
+  
+  if(isset($_SESSION['media-filter'])){ 
+    $form['filter']['actions']['clear'] = array(
+        '#type' => 'submit',
+        '#value' => t('Clear'),
+        '#submit' => array('media_browser_plus_media_filter_clear'),
+        '#validate' => array('media_browser_plus_media_filter_clear_validate')
+    );
+  }
+  
+  return $form['filter'];
+}
+
+/**
+ * 
+ */
+function _media_browser_plus_folder_list($prefixPadding = "-"){
+  //
+  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
+  $folders = taxonomy_get_tree($vocabulary->vid);
+  // start with empty list
+  $list = array();
+  // and fill it with padded folders
+  foreach($folders as $folder){
+    $pad = (($folder->depth * strlen($prefixPadding)) + strlen($folder->name));
+    $list[$folder->tid] = str_pad($folder->name, $pad, $prefixPadding, STR_PAD_LEFT); 
+  }
+  return $list;
+}
+
+/**
+ * changes the folder of the submitted media items
+ */
+function media_browser_plus_media_admin_folder_change_submit(&$form, &$form_state){
+  // get IDs
+  $fids = array_keys(array_filter($form_state['values']['files']));
+  $folder = (int) $form_state['values']['selected_folder'];
+  // load media
+  $media_entities = media_load_multiple($fids);
+  // apply folder
+  foreach ($media_entities as $media) {
+    if(isset($media->field_folder[LANGUAGE_NONE][0]['tid']))
+      $media->field_folder[LANGUAGE_NONE][0]['tid'] = $folder;
+    else
+      $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $folder)));
+    // save changes
+    media_save($media);
+  }
+  //
+  drupal_set_message(t('Folder changes applied successfully'));
+}
+
+
+/**
+ * 
+ * Called when the filter form is submitted.
+ * Adds filter to session and redirects back to callee
+ * 
+ * @param $argument
+ */
+function media_browser_plus_media_filter_submit($form, $form_state) {
+  // process filter
+  $_SESSION['media-filter']['filename'] = check_plain($form_state['input']['filename']);
+  $_SESSION['media-filter']['type'] = count($form_state['values']['media_type']) > 0 ? 
+    implode(",", $form_state['values']['media_type']) :
+    implode(",", media_type_get_type_names());
+  $_SESSION['media-filter']['include_subfolder'] = $form_state['values']['include_subfolders'];
+  //
+  $temp = array();
+  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
+  //
+  if(count($form_state['values']['field_folder']) == 0){
+    $all = taxonomy_get_tree(taxonomy_get_tree($vocabulary->vid));
+    //
+    foreach($all as $key=>$term){
+      $temp[$term->tid] = $term->tid;
+    }
+  }
+  else {
+    foreach($form_state['values']['field_folder'] as $key=>$value){
+      $tid = $value;
+      $temp[$tid] = $tid;
+      //
+      if($form_state['values']['include_subfolders']){
+        $children = taxonomy_get_tree($vocabulary->vid, $tid);
+        //
+        foreach($children as $key=>$term){
+          $temp[$term->tid] = $term->tid;
+        }
+      }
+    }
+  }
+  $_SESSION['media-filter']['field_folder'] = array_keys($temp);
+  //
+  $destination = array();
+  if (isset($_GET['destination'])) {
+    $destination = drupal_get_destination();
+    unset($_GET['destination']);
+  }
+  $form_state['redirect'] = array('admin/content/media/list/', array('query' => $destination));
+}
+
+/**
+ * 
+ * Validates the filter form
+ * 
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ */
+function media_browser_plus_media_filter_validate($form, &$form_state) {
+  // @todo: implement filter minimum check
+}
+
+/**
+ * 
+ * Called when the filter form is submitted.
+ * Adds filter to session and redirects back to callee
+ * 
+ * @param $argument
+ */
+function media_browser_plus_media_filter_clear($form, $form_state) {
+  // remove filter
+  unset($_SESSION['media-filter']);
+  //
+  $destination = array();
+  if (isset($_GET['destination'])) {
+    $destination = drupal_get_destination();
+    unset($_GET['destination']);
+  }
+  $form_state['redirect'] = array('admin/content/media/list/', array('query' => $destination));
+}
+
+/**
+ * 
+ * Validates the filter form
+ * 
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ */
+function media_browser_plus_media_filter_clear_validate($form, &$form_state) {
+  // @todo: implement filter minimum check
+}
+
