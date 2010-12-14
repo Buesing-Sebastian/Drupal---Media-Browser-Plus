@@ -1,98 +1,86 @@
-.media-filter-select
-{
-  width: 200px;
+.media-filter-select {
   height: 100px;
+  width: 200px;
 } 
 
-#folder
-{
-  width: 200px;
+#folder {
   height: auto;
+  width: 200px;
 }
 
-
-.media_column
-{
+.media_column {
   vertical-align: top;
 }
 
-#media_folder_table
-{
-	margin-top: 40px;	
+#media_folder_table {
+  clear: both;
+  margin-top: 15px;
 }
 
-#folder ul.hidden
-{
-	display: none;
+#folder ul.hidden {
+  display: none;
 }
 
-
-#categories-hierarchy
-{
-	background-color: #ccc;	
-	width: 300px;
-	height: 500px;
-	border: 1px solid #000;
-	padding: 5px;
+#categories-hierarchy {
+  background-color: #ccc;
+  border: 1px solid #000;
+  height: 500px;
+  padding: 5px;
+  width: 300px;
 }
 
-#folder li
-{
-	margin-top: 4px;
+#folder li {
+  margin-top: 4px;
 }
 
-#folder ul
-{
-	list-style-type: none;
-	padding: 0px;
-	margin: 2px 2px 2px 5px;
-}
-#folder ul ul
-{
-	list-style-type: none;
-	padding: 0px;
-	margin: 2px 2px 2px 29px;
+#folder ul {
+  list-style-type: none;
+  margin: 2px 2px 2px 5px;
+  padding: 0px;
 }
 
-#folder .folder
-{
-	margin-right: 6px;
-	width: 24px;
-	float:left;
-	background-image: url(../images/icons/folder.png);
+#folder ul ul {
+  list-style-type: none;
+  margin: 2px 2px 2px 29px;
+  padding: 0px;
 }
 
-#folder .fparent
-{
-	cursor: pointer;
-	margin-right: 6px;
-	width: 24px;
-	float:left;
-	background-image: url(../images/icons/folder-parent.png);
+#folder .folder {
+  background-image: url(../images/icons/folder.png);
+  float: left;
+  margin-right: 6px;
+  width: 24px;
 }
 
-#folder .folder_load:hover
-{
+#folder .fparent {
+  background-image: url(../images/icons/folder-parent.png);
+  cursor: pointer;
+  float: left;
+  margin-right: 6px;
+  width: 24px;
+}
+
+#folder .folder_load:hover {
   cursor: pointer;
 }
 
-#folder .ui-state-highlight
-{
-	background-color: ffff99;	
+#folder .ui-state-highlight {
+  background-color: #ffff99;
 }
 
-#folder .dragOverDrop
-{
-	font-weight: bold;
-	background-color: orange;		
-}
-
-#folder .selectedFolder
-{
+#folder .dragOverDrop {
+  background-color: orange;
   font-weight: bold;
 }
 
-.media-item .label-wrapper
-{
+#folder .selectedFolder {
+  font-weight: bold;
+}
+
+.media-item .label-wrapper {
   margin-left: 0;
 }
+/**
+.item-list .media-display-switch{
+  position: relative; top: -48px;
+}**/

@@ -1,127 +1,102 @@
-jQuery(document).ready(function() {
-  //
-  jQuery(function() {
-    // define our base variables to work with
-    var $gallery = jQuery( "#media-admin-gallery" ),
-      $folder = jQuery( "#folder" ),
-      $activeFolder = jQuery( "div.folder_load:first")
-      $url = jQuery("#js_base_href").attr('value'),
-      $currentPage = 1; // counting from 1 upwards
-    // let the gallery items be draggable
-    jQuery( "li", $gallery ).draggable({
+(function ($) {
+  Drupal.behaviors.media_browser_folders = {
+    attach: function () {
+      var gallery = $('.media-list-thumbnails');
+      // Let the gallery items be draggable
+      $( "li", gallery ).draggable({
         cancel: "a.ui-icon", // clicking an icon won't initiate dragging
         revert: "invalid", // when not dropped, the item will revert back to its initial position
         containment: "document", // stick to table
         helper: "clone",
         cursor: "move"
-    });
-    // load active folder
-    if($activeFolder){
-      $activeFolder = null;
-      loadFolderContents(jQuery( "div.folder_load:first"), 1);
-    }
-    	
+      });
       
-    // function which moves an image into a new folder
-    function moveImage( $item , $folder) {
-        // every image has an hidden input with its id inside its <li> tag
-        var $id = $item.find("input").attr('value');
-        // remove the hover media over folder class
-        $folder.removeClass('dragOverDrop');
-        // send the change media folder request
-        // @TODO: think about some success/error UI Feedback
-        jQuery.post($url + "?q=admin/content/media/change_category", { media: $id, folder: $folder.attr('id') },
-          function(data){
-            // which would be applied here
-         });	
-        // remove item from gallery
-        $item.fadeOut();
-    }
-    //
-    function loadFolderContents($item, $page){
-      // check against double loading of the same folder
-      if($activeFolder == $item)
-       return;
-       // remove selection from last selected folder
-      if($activeFolder)
-        $activeFolder.removeClass('selectedFolder');
-      // set folder as new active folder
-      $activeFolder = $item;
-      $activeFolder.addClass('selectedFolder');
-      // remove old pictures 
-      jQuery("#media-admin-gallery > li").each(function(index)
-      {
-        jQuery(this).fadeOut().remove();
+      // Load active folder
+      Drupal.behaviors.media_browser_folders.loadFolderContents($("div.folder_load:first"), 1);
+      $("div.folder_load:first").addClass('selectedFolder');
+
+      // Bind click handlers.
+      // toggle the display of subfolders
+      $( "div.fparent" ).bind('click', Drupal.behaviors.media_browser_folders.toggleSubfolders);
+
+      // folder content loading:
+      $('div.folder_load').bind('click', function( event ) {
+        // grab item
+        var $item = $(this);
+        // and load contents
+        Drupal.behaviors.media_browser_folders.loadFolderContents($item, 1);
+        return false;
       });
-      // @TODO: add some kind of loading UI and failure handling here
-      // and load in new ones
-      jQuery.post($url + "?q=admin/content/media/thumbnailsJSON", { folder: $item.attr('id')},
-        function(data){
-          // for each loaded item...
-          jQuery(data).each(function(index){
-          // grab item
-          var $item = jQuery(this);
-          // append it to the gallery and do a fadein
-          if($item.attr('id') == 'resultCount')
-          {
-            jQuery('#media_browser_plus_pages').html('Results: ' + $item.html())
-          }
-          else
-          {
-            $item.appendTo( $gallery ).fadeIn();
-            // make it draggable 
-              $item.draggable({
-              cancel: "a.ui-icon", // clicking an icon won't initiate dragging
-              revert: "invalid", // when not dropped, the item will revert back to its initial position
-              containment: "document", // stick to demo-frame if present
-              helper: "clone",
-              cursor: "move"
-            });
-          }
-         });
-      });
-    }
-    
-    // toggle the display of subfolders
-    jQuery( "div.fparent" ).click(function( event ) {
-      // grab folder
-      var $item = jQuery( this );
-      // iterate through its <ul> elements	
-      $item.parent().children('ul').each(function(index) {
-        // and toggle their display
-        jQuery(this).toggleClass('hidden');
-      });
-      return false;
-    });
-  
-    // folder content loading:
-  jQuery( "div.folder_load" ).click(function( event ) {
-    // grab item
-    var $item = jQuery( this );
-    // and load contents
-    loadFolderContents($item, 1);
-    return false;
-  });
-  
-  jQuery( "div.folder_load" ).each(function(index) {
-    // grabbing item
-    var $item = jQuery(this);
-    // make each on droppable
-    if($item.attr('id') != 'folder_load_0'){
-      $item.droppable({
-        accept: "#media-admin-gallery > li",
-        activeClass: "ui-state-highlight",
-        drop: function( event, ui ) {
-          moveImage( ui.draggable , $item);
+
+      $("div.folder_load" ).not('#folder_load_0').droppable({
+        accept: ".media-list-thumbnails > li",
+        drop: Drupal.behaviors.media_browser_folders.moveImage,
+        over: function (event, ui) {
+          $(this).toggleClass('dragOverDrop');
         },
-        over: function(event, ui) { 
-          $item.toggleClass('dragOverDrop');
-        },
-        out: function(event, ui) { 
-          $item.toggleClass('dragOverDrop');
+        out: function (event, ui) {
+          $(this).toggleClass('dragOverDrop');
         }
       });
+    },
+    // function which moves an image into a new folder
+    moveImage : function (event , ui) {
+      var folder = $(this);
+      if (folder.hasClass('selectedFolder')) {
+        return;
+      }
+      var item = ui.draggable;
+      // every image has an hidden input with its id inside its <li> tag
+      var id = item.attr('fid');
+      // remove the hover media over folder class
+      folder.removeClass('dragOverDrop');
+      // send the change media folder request
+      // @TODO: think about some success/error UI Feedback
+      $.post(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/change_category", {media: id, folder: folder.attr('id')});
+      // remove item from gallery
+      item.fadeOut();
+    },
+    loadFolderContents: function ($item, $page) {
+      // check against double loading of the same folder
+      if($item.hasClass('selectedFolder')) {
+        return;
+      }
+
+      $('.selectedFolder').removeClass('selectedFolder');
+      // Set folder as new active folder.
+      $item.addClass('selectedFolder');
+      // Remove old pictures.
+      $(".media-list-thumbnails > li").remove();
+      // @TODO: add some kind of loading UI and failure handling here
+      // and load in new ones
+      $.post(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/thumbnailsJSON", {folder: $item.attr('id')}, Drupal.behaviors.media_browser_folders.folderContentsLoaded);
+    },
+    folderContentsLoaded: function (data) {
+      jQuery(data).each(function(index){
+      // grab item
+      var $item = $(this);
+      // append it to the gallery and do a fadein
+      if($item.attr('id') == 'resultCount') {
+        $('#media_browser_plus_pages').html('Results: ' + $item.html())
+      } else {
+        $item.prependTo('.media-list-thumbnails');
+        // make it draggable
+        $item.draggable({
+          cancel: "a.ui-icon", // clicking an icon won't initiate dragging
+          revert: "invalid", // when not dropped, the item will revert back to its initial position
+          containment: "document", // stick to demo-frame if present
+          helper: "clone",
+          cursor: "move"
+        });
+      }
+      });
+    },
+    toggleSubfolders: function (event) {
+      // Grab folder.
+      var $item = $(this);
+      // Toggle the display of its <ul> elements.
+      $item.parent().children('ul').toggleClass('hidden');
+      return false;
     }
-  });
-  });
-});
+  };
+})(jQuery);
