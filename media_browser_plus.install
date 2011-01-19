@@ -1,10 +1,9 @@
 <?php
-// $Id$
+// $Id$ 
 
 /**
  * @file
  * Install file for media_browser_plus.
- *
  */
 
 /**
@@ -34,72 +33,49 @@ function _media_browser_plus_ensure_field_tags() {
     taxonomy_vocabulary_save($vocabulary);
   }
 
-  $field = array (
-    'entity_type' => 'media',
+  $field = array(
     'field_name' => 'field_tags',
     'type' => 'taxonomy_term_reference',
-    'cardinality' => '-1',
+    // Set cardinality to unlimited for tagging.
+    'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+    'entity_type' => 'media',
     'label' => 'Tags',
-    'widget' => array (
-      'weight' => '-4',
-      'type' => 'taxonomy_autocomplete',
-      'module' => 'taxonomy',
-      'active' => 0,
-      'settings' => array (
-        'size' => 60,
-        'autocomplete_path' => 'taxonomy/autocomplete',
-      ),
-    ),
-    'settings' => array (
-      'allowed_values' => array (
-        '0' => array (
-          'vocabulary' => 'tags',
+    'widget' => array('type' => 'taxonomy_autocomplete'),
+    'settings' => array(
+      'allowed_values' => array(
+        array(
+          'vocabulary' => $vocabulary->machine_name,
           'parent' => 0,
         ),
       ),
-
     ),
-    'display' => array (
-      'default' => array (
-        'label' => 'above',
-        'type' => 'taxonomy_term_reference_link',
-        'settings' => array (),
-        'module' => 'taxonomy',
-        'weight' => 1,
-      ),
-    ),
-    'required' => 0,
-    'description' => '',
-    'default_value' => '',
   );
   _media_browser_plus_ensure_field($field);
   // ensure instance for each media bundle
-  foreach (array_keys(media_type_get_types()) as $bundle) {
+  foreach(array_keys(media_type_get_types()) as $bundle){
     $field['bundle'] = $bundle;
     _media_browser_plus_ensure_instance($field);
   }
 }
 
 /**
- * Make sure the field_folder field exists and is of the right type.
+ * Make sure the field_tags field exists and is of the right type.
  */
 function _media_browser_plus_ensure_field_folder() {
-  // Make sure the 'media_folders' vocabulary exists.
+  // Make sure the 'tags' vocabulary exists.
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
   if (!$vocabulary) {
     $description = st('Use media folders to organize your media');
     $help = st('Enter a concise name for the media folder');
     $vocabulary = (object) array(
-        'name' => 'Media Folders',
-        'description' => $description,
-        'machine_name' => 'media_folders',
-        'hierarchy' => 1,
-        'help' => $help,
+      'name' => 'Media Folders',
+      'description' => $description,
+      'machine_name' => 'media_folders',
+      'hierarchy' => 1,
+      'help' => $help,
     );
     taxonomy_vocabulary_save($vocabulary);
   }
-
-  // Create field if necessary
   $field = array(
     'field_name' => 'field_folder',
     'label' => st('Media Folder'),
@@ -107,6 +83,7 @@ function _media_browser_plus_ensure_field_folder() {
     // media file can only be in one folder at a time
     'cardinality' => 1,
     'entity_type' => 'media',
+    'bundle' => 'image',
     'required' => TRUE,
     'settings' => array(
       'allowed_values' => array(
@@ -118,37 +95,24 @@ function _media_browser_plus_ensure_field_folder() {
     ),
   );
   _media_browser_plus_ensure_field($field);
-
   // ensure instance for each media bundle
-  foreach (array_keys(media_type_get_types()) as $bundle) {
+  foreach(array_keys(media_type_get_types()) as $bundle){
     $field['bundle'] = $bundle;
-    $field['bundle'] = $bundle;
-    $field['settings']['allowed_values']['vocabulary'] = $vocabulary->machine_name;
-    $field['entity_type'] = 'media';
     _media_browser_plus_ensure_instance($field);
   }
-
-  $media_root_term = reset(taxonomy_term_load_multiple(NULL, array('name' => 'Media Root')));
-  if (!$media_root_term) {
-    // create default folder
-    $media_root_term = new stdClass();
-    $media_root_term->name = 'Media Root';
-    $media_root_term->description = 'default media folder';
-    $media_root_term->vid = $vocabulary->vid;
-    $media_root_term->weight = '-10';
-    // save (default folder) term
-    taxonomy_term_save($media_root_term);
-  }
-
-  // Assign all existing fields to the default folder
-  $assets = media_load_multiple(FALSE);
-  foreach ($assets as $media) {
-    $media->field_folder = array(
-      LANGUAGE_NONE => array(
-        array('tid' => $media_root_term->tid),
-      ),
-    );
-    media_save($media);
+  $field = array(
+    'field_name' => 'field_description',
+    'label' => st('Description'),
+    'type' => 'text_long',
+    'entity_type' => 'media',
+    'bundle' => 'image',
+    'required' => FALSE
+  );
+  _media_browser_plus_ensure_field($field);
+  // ensure instance for each media bundle
+  foreach(array_keys(media_type_get_types()) as $bundle){
+    $field['bundle'] = $bundle;
+    _media_browser_plus_ensure_instance($field);
   }
 }
 
@@ -157,31 +121,17 @@ function _media_browser_plus_ensure_field_folder() {
  *
  * Note that it's not necessary to check field type here, as that's done in the
  * requirements step.
- * New fields are stored to be able to make a clean uninstall.
  *
  * @param $field
  *   The field definition.
  */
 function _media_browser_plus_ensure_field($field) {
-  // Check if field already exists
   $existing_field = field_info_field($field['field_name']);
   if (empty($existing_field)) {
-    $installed_fields = variable_get('media_browser_plus_new_fields', array());
-    $installed_fields[$field['field_name']] = $field['field_name'];
-    $existing_field = field_create_field($field);
-    variable_set('media_browser_plus_new_fields', $installed_fields);
+    field_create_field($field);
   }
-  return $existing_field;
 }
 
-/**
- * Makes sure an instance of a field exists
- *
- * @param array $instance
- *   Array in the format needed by field_create_instance()
- *
- * @see field_create_instance()
- */
 function _media_browser_plus_ensure_instance($instance) {
   $existing_instance = field_info_instance($instance['entity_type'], $instance['field_name'], $instance['bundle']);
   if (empty($existing_instance)) {
@@ -192,20 +142,56 @@ function _media_browser_plus_ensure_instance($instance) {
 /**
  * @TODO: put files into default folders if not yet in any folder
  */
-function media_browser_plus_enable() {
-
+function media_browser_plus_enable(){
+  // save default settings
+  variable_set('media_media_per_page', 30);
+  variable_set('media_grid_window_height', 400);
+  variable_set('media_page_items_per_page', 10);
+  // add all media to default media folder
+  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
+  if ($vocabulary) {
+    $results = db_query('SELECT * FROM {taxonomy_term_data} ttd WHERE ttd.name = :name AND ttd.vid = :vocabulary',
+      array('name' => 'Media Root', 'vocabulary' => $vocabulary->vid));
+    $term_id = null; 
+    foreach($results as $result) {
+      $term_id = $result->tid;
+    }
+    if(!$term_id) {
+      $media_root_term = new stdClass();
+      $media_root_term->name = 'Media Root';
+      $media_root_term->description = 'default media folder';
+      $media_root_term->vid = $vocabulary->vid;
+      $media_root_term->weight = '-10';
+      // save (default folder) term
+      taxonomy_term_save($media_root_term);
+      $results = db_query('SELECT * FROM {taxonomy_term_data} ttd WHERE ttd.name = :name AND ttd.vid = :vocabulary',
+      array('name' => 'Media Root', 'vocabulary' => $vocabulary->vid));
+      foreach($results as $result) {
+        $term_id = $result->tid;
+      }
+    }
+    if($term_id) {
+      // load all media and apply tid of folder if none set
+      $media_entities = media_browser_plus_load_multiple(array('paging' => false, 'apply_filter' => false));
+      foreach($media_entities->results as $media) {
+        if(!isset($media->field_folder[LANGUAGE_NONE])) {
+          $media->field_folder = array(LANGUAGE_NONE => array(array('tid' =>$term_id)));
+          echo $media->fid;
+          media_save($media);
+        }
+      }
+    }
+  }
 }
 
 /**
- * Uninstall actions.
- *
- * Remove fields if they where introduced by this module.
- *
- * @TODO: discuss if this should be done - maybe an additional bundle check
- *   would make sense.
+ * @TODO: discuss if this should be done
  */
-function media_browser_plus_uninstall() {
-  foreach (variable_get('media_browser_plus_new_fields', array()) as $field_name) {
-    field_delete_field($field_name);
-  }
+function media_browser_plus_uninstall(){
+  field_delete_field('field_folder');
+  field_delete_field('field_tags');
+  field_delete_field('field_description');
+  variable_del('media_media_per_page');
+  variable_del('media_grid_window_height');
+  variable_del('media_page_items_per_page');
 }

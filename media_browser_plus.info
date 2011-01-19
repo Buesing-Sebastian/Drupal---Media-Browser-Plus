@@ -6,7 +6,7 @@ package = "Media"
 core = 7.x
 files[] = media_browser_plus.module
 files[] = media_browser_plus.install
+files[] = media_browser_plus.folders.inc
 dependencies[] = media
 dependencies[] = taxonomy
-dependencies[] = comment
 

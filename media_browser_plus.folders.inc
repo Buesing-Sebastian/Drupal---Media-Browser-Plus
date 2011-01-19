@@ -1,28 +1,23 @@
 <?php
-// $Id$ 
+// $Id$
 
 /**
- * @file
- * Adds folder management to the media UI
+ * Enter description here ...
+ * @param $form
+ * @param $form_state
  */
-
-function media_browser_plus_folder_list(&$form, &$form_state){
-  //
+function media_browser_plus_folder_list($form, &$form_state) {
   $destination = drupal_get_destination();
-  
   $form['action-links'] = array(
     '#type' => 'markup',
     '#markup' => "<ul class=\"action-links\"><li>" .
-       l(t('Add new folder'), 'admin/content/media/folders/add', array('query' => $destination)) .
+       l(t('Add new folder'), 'admin/content/media/add_folder', array('query' => $destination)) .
        "</li></ul>");
-  
-  $options = array(); //folder_admin_list('table', $form, $form_state);
-  $folder_hierarchy = array(); //folder_admin_list('hierarchy_list', $form, $form_state);
-    
+  // table header
   $header = array(
     'name' => array(
       'data' => t('Name'),
-      'width' => '40%'),
+      'width' => '55%'),
     'weight' => array(
       'data' => t('Weight'),
       'width' => '15%'),
@@ -31,200 +26,307 @@ function media_browser_plus_folder_list(&$form, &$form_state){
       'width' => '30%'),
     'operations' => array(
       'data' => t('Operations'),
-      'colspan' => 2
-    )
+      'colspan' => 2)
   );
   drupal_add_tabledrag('folder-overview', 'match', 'parent', 'folder-pid', 'folder-pid', 'folder-folder_id', TRUE);
   drupal_add_tabledrag('folder-overview', 'order', 'sibling', 'folder-weight');
-  
-  $output = '';
-  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
-  $folders = taxonomy_get_tree($vocabulary->vid);
-  $rows = theme_folders_hierarchy_table_rows($folders);// $folder_hierarchy = folder_admin_list('hierarchy_table', $form, $form_state);
-  
+  // get table rows
+  $rows = media_browser_plus_folder_admin_list();
+  // check for emptyness
   if (empty($rows)) {
-    $rows[] = array(array('data' => t('No folders created yet.'), 'colspan' => '4'));
+    $rows[] = array(array('data' => t('No folders created yet.'), 'colspan' => '5'));
   }
-  $output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'folder-overview')));
-  
+  $output = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'folder-overview')));
   $form['admin'] = array(
-      '#type' => 'markup',
-      '#markup' => $output);
-  
-  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
-  
+    '#type' => 'markup',
+    '#markup' => $output);
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array('#type' => 'submit', '#value' => t('Save Changes'));
   return $form;
 }
 
-function media_browser_plus_folder_list_submit(&$form, &$form_state){
-  //
-  print_r($form_state['values']);
-  die();
+function media_browser_plus_folder_list_submit($form, &$form_state) {
+  foreach($form_state['input'] as $key => $value) {
+    if(strstr($key, "folder_id")) {
+      $folder = media_browser_plus_folder_load((int)$value['folder_id']);
+      $folder->parent = (int)$value['pid'];
+      $folder->weight = (int)$value['weight'];
+      taxonomy_term_save($folder);
+    }
+  }
+  drupal_set_message(t('Changes saved successfully'));
 }
-function theme_folders_hierarchy_table_rows($folders)
-{
-  //$folders = $variables['folders'];
-  //
-  $rows = array();
+/**
+ * Enter description here ...
+ * @param unknown_type $mode
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ * @param unknown_type $filter
+ */
+function media_browser_plus_folder_admin_list() {
+  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
+  $categories = array();
+  $result = taxonomy_get_tree($vocabulary->vid);
   $destination = drupal_get_destination();
-  //
-  foreach($folders as $id=>$item)
-  {
-    //
+  $rows = array();
+  foreach($result as $key=>$item) {
+    $element['plid']['#attributes']['class'] = array('menu-plid');
+    $element['mlid']['#attributes']['class'] = array('menu-mlid');
+    $element['weight']['#attributes']['class'] = array('menu-weight');
+    // create row
     $row = array();
-    $row[] = theme('indentation', array('size' => $folders[$id]->depth)) . $folders[$id]->name;
-    $row[] = _theme_folder_weight_column($folders[$id]->weight, $id, $folders[$id]->parents[0]);
-    $row[] = $folders[$id]->description;
-    $row[] = l(t('edit'), 'admin/content/media/folders/' . $item->tid . '/edit', array('query' => $destination));
-    $row[] = l(t('delete'), 'admin/content/media/folders/' . $item->tid . '/delete', array('query' => $destination));
-    //
+    $row[] = theme('indentation', array('size' => $item->depth)) . $item->name;
+    $row[] = media_browser_plus_folder_theme_folder_weight_column($item->weight, $item->tid, $item->parents[0]);
+    $row[] = $item->description;
+    $row[] = l(t('edit'), 'admin/content/media/folder/' . $item->tid . '/edit', array('query' => $destination));
+    $row[] = l(t('delete'), 'admin/content/media/folder/' . $item->tid . '/delete', array('query' => $destination));
+    // change formate of row
     $row = array('data' => $row);
-           
     $row['class'][] = 'draggable';
     $rows[] = $row;
   }
-  //
   return $rows;
 }
 
-
-function _theme_folder_weight_column($weight, $folder_id, $pid)
-{
-  //
-  $output = "<div class=\"form-item form-type-select form-item-folder_id:236-weight\">
-             <select name=\"folder_id:236[weight]\" class=\"folder-weight form-select\" id=\"edit-folder_id236-weight\" >";
-  // 
-  $options = range(-50, 50);
-  //
-  foreach($options as $option)
-  {
-    $output .= "<option ".($option == $weight ? 'selected="selected"' : '')." value=\"".$option."\">".$option."</option>";
-  }
-  //
-  $output .= "</select></div>";
-  //
-  $output .= "<input type=\"hidden\" id=\"edit-folder_id".$folder_id."-pid\" class=\"folder-pid\" value=\"".$pid."\" name=\"folder_id:".$folder_id."[pid]\" />";
-  $output .= "<input type=\"hidden\" id=\"edit-folder_id".$folder_id."-folder_id\" class=\"folder-folder_id\" value=\"".$folder_id."\" name=\"folder_id:".$folder_id."[folder_id]\" />";
-  //
-  return $output;
-}
-
-/**
- * Allows to add a new media folder
- */
-function media_browser_plus_folder_admin_add(&$form, &$form_state){
-  //
-  $folders = array_merge(array('0' => t('No Parent')), _media_browser_plus_folder_list());
+function media_browser_plus_folder_add($form, &$form_state) {
   $form['new_folder'] = array(
     '#type' => 'fieldset',
-    '#title' => t('New media folder'),
-  
-  'folder_name' => array(
+    '#title' => t('New Folder'),
+    'name' => array(
       '#type' => 'textfield',
       '#title' => t('Name'),
       '#description' => t('Please enter a folder name'),
       '#maxlength' => 125,
       '#required' => TRUE),
-  
-  'folder_short_description' => array(
-    '#type' => 'textfield',
-    '#title' => t('Description'),
-    '#description' => t('You may enter a brief description'),
-    '#maxlength' => 255),
-  
-  'pid' => array(
-    '#type' => 'select',
-    '#title' => t('Parent folder'),
-    '#default_value' => variable_get('feed_item_length','teaser'),
-    '#options' => $folders,
-    '#required' => TRUE,
-    '#description' => t('Sets one parent folder for the new folder')),
-  
-  'submit' => array(
-    '#type' => 'submit',
-    '#value' => t('Create media folder'))
-    
+    'description' => array(
+      '#type' => 'textfield',
+      '#title' => t('Description'),
+      '#description' => t('You may enter a brief description'),
+      '#maxlength' => 255),
+    'pid' => array(
+      '#type' => 'select',
+      '#title' => t('Parent Category'),
+      '#options' => media_browser_plus_folder_get_folders(),
+      '#description' => t('Sets one parent folder for the new folder'))
   );
-  //
+  $form['actions'] = array(
+    '#type' => 'actions',
+    'submit' => array(
+      '#type' => 'submit',
+      '#value' => t('Save'),
+      '#submit' => array('media_browser_plus_folder_add_submit')),
+    'continue' => array(
+      '#type' => 'submit',
+      '#value' => t('Save & Continue'),
+      '#submit' => array('media_browser_plus_folder_add_submit_continue')),
+    'cancel' => array(
+      '#type' => 'submit',
+      '#value' => t('Cancel'),
+      '#limit_validation_errors' => array(),
+      '#submit' => array('media_browser_plus_folder_add_cancel')));
   return $form;
 }
 
-/**
- * saves new media folder
- */
-function media_browser_plus_folder_admin_add_submit(&$form, &$form_state){
-  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
-  $folder = new stdClass();
-  $folder->name = check_plain($form_state['values']['folder_name']);
-  $folder->description = check_plain($form_state['values']['folder_short_description']);
-  $folder->parent = array((int)$form_state['values']['pid']);
-  $folder->vid = $vocabulary->vid;
-  // save (default folder) term  
-  if(taxonomy_term_save($folder))
-    drupal_set_message(t('New media folder has been created'));
-  else
-    drupal_set_message(t('New media folder could not be created', 'error'));
+function media_browser_plus_folder_add_submit($form, &$form_state) {
+  // save folder
+  media_browser_plus_folder_save_folder($form_state);
+  // and go back
+  $destination = drupal_get_destination();
+  $form_state['redirect'] = $destination['destination'];
 }
 
-/**
- * 
- * Enter description here ...
- * @param $folder
- */
-function media_browser_plus_folder_admin_edit($folder){
-  drupal_set_title(t('Edit media folder') . ": " . $folder->name, PASS_THROUGH);
-  return drupal_get_form('media_browser_plus_folder_admin_edit_form', $folder);
+function media_browser_plus_folder_add_submit_continue($form, &$form_state) {
+  media_browser_plus_folder_save_folder($form_state);
+  $destination = array();
+  if (isset($_GET['destination'])) {
+    $destination = drupal_get_destination();
+    unset($_GET['destination']);
+  }
+  $form_state['redirect'] = array('admin/content/media/add_folder', array('query' => $destination));
 }
 
-function media_browser_plus_folder_admin_delete($folder){
-  
-}
-
-function media_browser_plus_folder_admin_edit_form(&$form, &$form_state, $folder){
-  $form['edit_folder'] = array(
+function media_browser_plus_folder_edit($form, &$form_state, $folder) {
+  $parents = taxonomy_get_parents($folder->tid);
+  $form['folder'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Edit folder'),
-
-    'folder_name' => array(
-      '#type' => 'textfield',
-      '#title' => t('Name'),
-      '#value' => $folder->name,
-      '#description' => t('Alter the folder name'),
-      '#maxlength' => 125,
-      '#required' => TRUE),
-  
-    'folder_short_description' => array(
-      '#type' => 'textfield',
-      '#title' => t('Description'),
-      '#value' => $folder->description,
-      '#description' => t('Alter the brief description'),
-      '#maxlength' => 255),
-  
-    'pid' => array(
-      '#type' => 'select',
-      '#title' => t('Parent folder'),
-      '#default_value' => '_' . $folder->pid,
-      '#options' => array(),
-      '#description' => t('Sets one parent folder for the new folder')),
-  
-    'tid' => array(
+    '#title' => t('New Folder'),
+    'folder_id' => array(
       '#type' => 'hidden',
       '#value' => $folder->tid),
-                        
+    'name' => array(
+      '#type' => 'textfield',
+      '#title' => t('Name'),
+      '#description' => t('Please enter a folder name'),
+      '#maxlength' => 125,
+      '#default_value' => $folder->name,
+      '#required' => TRUE),
+    'description' => array(
+      '#type' => 'textfield',
+      '#title' => t('Description'),
+      '#description' => t('You may enter a brief description'),
+      '#default_value' => $folder->description,
+      '#maxlength' => 255),
+    'pid' => array(
+      '#type' => 'select',
+      '#title' => t('Parent Category'),
+      '#options' => media_browser_plus_folder_get_folders(),
+      '#default_value' => count($parents) ? array_pop(array_keys($parents)) : 0,
+      '#description' => t('Sets one parent folder for the new folder'))
+  );
+  $form['actions'] = array(
+    '#type' => 'actions',
     'submit' => array(
-      'submit' => array(
-        '#type' => 'submit',
-        '#value' => t('Save'),
-        '#weight' => 5,
-        '#submit' => array('media_browser_plus_folder_admin_edit_submit')),
+      '#type' => 'submit',
+      '#value' => t('Save'),
+      '#submit' => array('media_browser_plus_folder_edit_submit')),
+    'delete' => array(
+      '#type' => 'submit',
+      '#value' => t('Delete'),
+      '#submit' => array('media_browser_plus_folder_edit_delete')),
+    'cancel' => array(
+      '#type' => 'submit',
+      '#value' => t('Cancel'),
+      '#limit_validation_errors' => array(),
+      '#submit' => array('media_browser_plus_folder_add_cancel')));
+  return $form;
+}
+
+function media_browser_plus_folder_edit_submit($form, &$form_state) {
+  // save folder
+  media_browser_plus_folder_save_folder($form_state);
+  // and go back
+  $destination = drupal_get_destination();
+  $form_state['redirect'] = $destination['destination'];
+}
+
+function media_browser_plus_folder_edit_delete($form, &$form_state) {
+  if(isset($form_state['values']['folder_id'])) {
+    $destination = array();
+    if (isset($_GET['destination'])) {
+      $destination = drupal_get_destination();
+      unset($_GET['destination']);
+    }
+    $form_state['redirect'] = array('admin/content/media/folder/' . (int)$form_state['values']['folder_id'] . '/delete', array('query' => $destination));
+  }
+}
+
+function media_browser_plus_folder_delete($form, &$form_state, $folder) {
+  // check if folder not empty and has no subfolders
+  $voc = taxonomy_vocabulary_machine_name_load('media_folders');
+  $children = taxonomy_get_tree($voc->vid, $folder->tid);
+  if(!_media_browser_plus_folder_empty($folder->tid) && count($children) == 0) {
+    $form['intro'] = array(
+      '#type' => 'item',
+      '#markup' => t('Do you really want to delete the following folder:'),
+    );
+    $form['item'] = array(
+      '#type' => 'item',
+      '#markup' => $folder->name,
+      '#prefix' => '<ul><li>',
+      '#suffix' => '</ul></li>'
+    );
+    $form['note'] = array(
+      '#type' => 'item',
+      '#markup' => t('This action cannot be undone.'),
+    );
+    $form['folder_id'] = array(
+      '#type' => 'hidden',
+      '#value' => $folder->tid
+    );
+    $form['actions'] = array(
+      '#type' => 'actions',
       'delete' => array(
         '#type' => 'submit',
         '#value' => t('Delete'),
-        '#weight' => 10,
-        '#submit' => array('media_browser_plus_folder_admin_edit_delete_submit')))                 
-    
-  );
-  //
-  return $form;
+        '#submit' => array('media_browser_plus_folder_delete_submit')),
+      'cancel' => array(
+        '#type' => 'submit',
+        '#value' => t('Cancel'),
+        '#limit_validation_errors' => array(),
+        '#submit' => array('media_browser_plus_folder_add_cancel')));
+    return $form;
+  } else {
+    if(count($children) != 0)
+      drupal_set_message(t('Folder "'.$folder->name.'" has subfolders and cannot be deleted'), 'error');
+    if(_media_browser_plus_folder_empty($folder->tid))
+      drupal_set_message(t('Folder "'.$folder->name.'" is not empty and cannot be deleted'), 'error');
+    $destination = drupal_get_destination();
+    drupal_goto($destination['destination']);
+  }
 }
-?>
+
+function media_browser_plus_folder_delete_submit($form, &$form_state) {
+  // load folder, delete and return
+  $folder = media_browser_plus_folder_load((int)$form_state['values']['folder_id']);
+  if(taxonomy_term_delete($folder->tid))
+    drupal_set_message(t('Folder "'.$folder->name.'" deleted successfully'));
+  else
+    drupal_set_message(t('Error deleting folder "'.$folder->name.'"'), 'error');
+  $destination = drupal_get_destination();
+  $form_state['redirect'] = $destination['destination'];
+}
+
+function media_browser_plus_folder_save_folder($form_state) {
+  // parse values
+  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
+  $term = new stdClass();
+  // if update
+  if(isset($form_state['values']['folder_id']))
+    $term->tid = (int)$form_state['values']['folder_id'];
+  $term->name = check_plain($form_state['values']['name']);
+  $term->description = check_plain($form_state['values']['description']);
+  $term->parent = (int)$form_state['values']['pid'];
+  $term->vid = $vocabulary->vid;
+  // save (folder) term
+  switch(taxonomy_term_save($term)) {
+    case(SAVED_NEW):
+      drupal_set_message(t('Folder "'.$term->name.'" created successfully'));
+    break;
+    case(SAVED_UPDATED):
+      drupal_set_message(t('Folder "'.$term->name.'" updated successfully'));
+    break;
+    case(FALSE):
+      drupal_set_message(t('Error saving folder "'.$term->name.'"'), 'error');
+    break;
+  }
+}
+
+function media_browser_plus_folder_get_folders() {
+  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
+  $folders = array(0 => '> ' . t('No Parent') . ' <');
+  foreach(taxonomy_get_tree($vocabulary->vid) as $key=>$value) {
+    $folders[$value->tid] = str_pad("", $value->depth, "-") . $value->name;
+  }
+  return $folders;
+}
+
+/**
+ * simple form cancel redirect
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ */
+function media_browser_plus_folder_add_cancel($form, &$form_state) {
+  $destination = drupal_get_destination();
+  $form_state['redirect'] = $destination['destination'];
+}
+
+/**
+ * Enter description here ...
+ * @param unknown_type $weight
+ * @param unknown_type $folder_id
+ * @param unknown_type $pid
+ */
+function media_browser_plus_folder_theme_folder_weight_column($weight, $folder_id, $pid) {
+  // create the necessary div & select form
+  $output = "<div class=\"form-item form-type-select form-item-folder_id:".$folder_id."-weight\">
+             <select name=\"folder_id:".$folder_id."[weight]\" class=\"folder-weight form-select\" id=\"edit-folder_id".$folder_id."-weight\" >";
+  $options = range(-50, 50);
+  foreach($options as $option) {
+    $output .= "<option ".($option == $weight ? 'selected="selected"' : '')." value=\"".$option."\">".$option."</option>";
+  }
+  $output .= "</select></div>";
+  $output .= "<input type=\"hidden\" id=\"edit-folder_id".$folder_id."-pid\" class=\"folder-pid\" value=\"".$pid."\" name=\"folder_id:".$folder_id."[pid]\" />";
+  $output .= "<input type=\"hidden\" id=\"edit-folder_id".$folder_id."-folder_id\" class=\"folder-folder_id\" value=\"".$folder_id."\" name=\"folder_id:".$folder_id."[folder_id]\" />";
+  // add return 
+  return $output;
+}
