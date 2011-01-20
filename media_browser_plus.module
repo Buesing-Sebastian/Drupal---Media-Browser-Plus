@@ -77,6 +77,12 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
       '#attributes' => array('id' => 'media_buttons_view'),
       '#value' => t('View')
     );
+  if(media_access('preview'))
+    $form['buttons']['preview_media'] = array(
+      '#type' => 'button',
+      '#attributes' => array('id' => 'media_buttons_preview'),
+      '#value' => t('Preview')
+    );
   if(media_access('edit'))
     $form['buttons']['edit_media'] = array(
       '#type' => 'submit',
@@ -842,7 +848,27 @@ function media_browser_plus_menu(){
     'access arguments' => array('edit'),
     'file' => 'media_browser_plus.folders.inc'
   );
+  $items['admin/content/media/%media/preview'] = array(
+    'title' => 'Preview Media',
+    'description' => 'Preview Media Item',
+    'page callback' => 'drupal_get_form',
+    'page arguments'  => array('media_browser_plus_media_preview', 3),
+    'access callback' => 'media_access',
+    'access arguments' => array('preview'),
+    'file' => 'media_browser_plus.module'
+  );
   return $items;
+}
+
+function media_browser_plus_media_preview($form, &$form_state, $media) {
+  $form['preview'] = media_get_thumbnail_preview(media_load($media->fid), TRUE);
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array('#type' => 'submit', '#value' => t('Close Preview'));
+  return $form;
+}
+
+function media_browser_plus_media_preview_submit($form, &$form_state) {
+  $form_state['redirect'] = 'admin/content/media/thumbnails';
 }
 
 function media_browser_plus_media_operations() {

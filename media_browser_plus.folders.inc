@@ -42,6 +42,7 @@ function media_browser_plus_folder_list($form, &$form_state) {
     '#markup' => $output);
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array('#type' => 'submit', '#value' => t('Save Changes'));
+  $form['actions']['cancel'] = array('#type' => 'submit', '#value' => t('Cancel'), '#submit' => array('media_browser_plus_folder_admin_list_cancel'));
   return $form;
 }
 
@@ -55,6 +56,11 @@ function media_browser_plus_folder_list_submit($form, &$form_state) {
     }
   }
   drupal_set_message(t('Changes saved successfully'));
+  $form_state['redirect'] = 'admin/content/media/thumbnails';
+}
+
+function media_browser_plus_folder_admin_list_cancel($form, &$form_state) {
+  $form_state['redirect'] = 'admin/content/media/thumbnails';
 }
 /**
  * Enter description here ...

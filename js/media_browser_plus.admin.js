@@ -33,7 +33,7 @@
       }
       $("#media-basket-list").droppable({
           accept: "#media-thumb-list > li",
-          drop: Drupal.behaviors.media_browser_folders.dropSelectImage,
+          drop: Drupal.behaviors.media_browser_folders.dropSelectedImage,
           over: function (event, ui) {
             $(this).toggleClass('dragOverDrop');
           },
@@ -42,7 +42,15 @@
           }
         });
       $('#media_buttons_view').bind('click', function( event ) {
-          alert('not yet implemented');
+    	  $media = $("div.selected:first", $('#media-thumb-list'));
+          window.open(Drupal.settings.media_browser_plus.url +
+            "?q=media/" + $media.parent().attr('fid') + "/view");
+        return false;
+      });
+      $('#media_buttons_preview').bind('click', function( event ) {
+          $media = $("div.selected:first", $('#media-thumb-list'));
+          window.location = Drupal.settings.media_browser_plus.url +
+            "?q=admin/content/media/" + $media.parent().attr('fid') + "/preview";
         return false;
       });
       $('#media_main_view_select_all').bind('click', function( event ) {
@@ -58,24 +66,7 @@
           });
       });
       $('#media_buttons_select').bind('click', function( event ) {
-          $('div.selected', $('#media-thumb-list')).each(function(index){
-            // grab item
-            var $media = $(this);
-            // check for double adding
-            $item_dup = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
-            if($item_dup.html() == null) {
-            var item = '<li fid="' + $media.parent().attr('fid') + '">' + $media.parent().html() + '</li>';
-            item += '<input type="hidden" name="selected_media['+$media.parent().attr('fid')+']" value="1">';
-            $item = $(item);
-            $item.bind('click', function( event ) {
-              // grab item
-              $item_b = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
-              $item_b.remove();
-              return true;
-              });
-            $item.appendTo('#media-basket-list');
-            }
-          });
+        Drupal.behaviors.media_browser_folders.selectImages();
         return false;
       });
     },
@@ -110,7 +101,27 @@
           }
         }
     },
-    dropSelectImage : function (event , ui) {
+    selectImages : function (data) {
+      $('div.selected', $('#media-thumb-list')).each(function(index){
+        // grab item
+        var $media = $(this);
+        // check for double adding
+        $item_dup = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
+        if($item_dup.html() == null) {
+          var item = '<li fid="' + $media.parent().attr('fid') + '">' + $media.parent().html() + '</li>';
+          item += '<input type="hidden" name="selected_media['+$media.parent().attr('fid')+']" value="1">';
+          $item = $(item);
+          $item.bind('click', function( event ) {
+            // grab item
+            $item_b = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
+            $item_b.remove();
+            return true;
+            });
+        $item.appendTo('#media-basket-list');
+        }
+      });
+    },
+    dropSelectedImage : function (event , ui) {
       $clone = $(ui.draggable);
       $media = $('li[fid="'+$clone.attr('fid')+'"]', $('#media-thumb-list'));
       $id = $media.attr('fid');
@@ -128,6 +139,7 @@
           });
         $item.appendTo('#media-basket-list');
       }
+      Drupal.behaviors.media_browser_folders.selectImages();
     },
     loadFolderContents: function ($item, $page) {
       // check against double loading of the same folder
