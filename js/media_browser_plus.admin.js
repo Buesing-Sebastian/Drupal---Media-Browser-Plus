@@ -42,15 +42,17 @@
           }
         });
       $('#media_buttons_view').bind('click', function( event ) {
-    	  $media = $("div.selected:first", $('#media-thumb-list'));
-          window.open(Drupal.settings.media_browser_plus.url +
-            "?q=media/" + $media.parent().attr('fid') + "/view");
+          $media = $("div.selected:first", $('#media-thumb-list'));
+          if($media.html() != null)
+            window.open(Drupal.settings.media_browser_plus.url +
+              "?q=media/" + $media.parent().attr('fid') + "/view");
         return false;
       });
       $('#media_buttons_preview').bind('click', function( event ) {
           $media = $("div.selected:first", $('#media-thumb-list'));
-          window.location = Drupal.settings.media_browser_plus.url +
-            "?q=admin/content/media/" + $media.parent().attr('fid') + "/preview";
+          if($media.html() != null)
+            window.location = Drupal.settings.media_browser_plus.url +
+              "?q=admin/content/media/" + $media.parent().attr('fid') + "/preview";
         return false;
       });
       $('#media_main_view_select_all').bind('click', function( event ) {
