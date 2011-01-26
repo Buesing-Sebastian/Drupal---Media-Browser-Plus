@@ -26,8 +26,8 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   $setting['media_browser_plus']['browserUrl'] = $setting['media_browser_plus']['url'] . "?q=media/browser&render=media-settings";
   // access settings
   $setting['media_browser_plus']['folder_dnd_enabled'] = media_access('edit');
-  $setting['media_browser_plus']['manage_folders'] = media_access('manage folders');
-  $setting['media_browser_plus']['add_files'] = media_access('upload');
+  $setting['media_browser_plus']['manage_folders'] = media_access('edit folders');
+  $setting['media_browser_plus']['add_files'] = media_access('upload media');
   $form['#attached']['js'][] = array(
     'type' => 'setting',
     'data' => $setting,
@@ -90,7 +90,7 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
       '#validate' => array('media_browser_plus_media_admin_validate'),
       '#value' => t('Edit')
     );
-  if(media_access('delete')) // edit-submit
+  if(media_access('edit')) // edit-submit
     $form['buttons']['delete_media'] = array(
       '#type' => 'submit',
       '#submit' => array('media_browser_plus_delete_multiple_redirect'),
@@ -438,10 +438,12 @@ function media_browser_plus_form_media_internet_add_alter(&$form, &$form_state) 
  * taxonomy_autocomplete_validate(), and adds the expected information to
  * $form_state, as expected by taxonomy_autocomplete_validate().
  */
-function media_browser_plus_prepare_taxonomy_autocomplete_validate($element, &$form_state) {
+function media_browser_plus_prepare_taxonomy_autocomplete_validate(&$element, &$form_state) {
   // causes: Notice: Undefined index: #language in media_browser_plus_prepare_taxonomy_autocomplete_validate() (line 436 of ...sites/all/modules/media_browser_plus-HEAD/media_browser_plus.module).
   // @TODO: fix
-  //$form_state['field'][$element['#field_name']][$element['#language']]['field'] = field_info_field($element['#field_name']);
+  $form_state['field'][$element['#field_name']][$element['#language']]['field'] = field_info_field($element['#field_name']);
+  // fixes: undefined index #field_parents in field_widget_field()
+  $element['#field_parents'] = array();
 }
 
 /**
@@ -784,7 +786,7 @@ function media_browser_plus_menu(){
     'page callback' => 'media_browser_plus_thumbnailsJSON',
     'file' => 'media_browser_plus.module',
     'access callback' => 'media_access',
-    'access arguments' => array('edit')
+    'access arguments' => array('preview')
   );
   $items['admin/config/media/media_browser_plus_settings'] = array(
     'title' => 'Media Browser Plus Settings',
@@ -793,7 +795,7 @@ function media_browser_plus_menu(){
     'page arguments' => array('media_browser_plus_media_settings'),
     'file' => 'media_browser_plus.module',
     'access callback' => 'media_access',
-    'access arguments' => array('settings')
+    'access arguments' => array('administer')
   );
   $items['admin/content/media/edit_multiple/%'] = array(
     'title' => 'Edit Media Items',
@@ -809,7 +811,7 @@ function media_browser_plus_menu(){
     'page arguments' => array('media_browser_plus_delete_multiple_form', 4),
     'file' => 'media_browser_plus.module',
     'access callback' => 'media_access',
-    'access arguments' => array('delete')
+    'access arguments' => array('edit')
   );
   // folder management disabled until menu bug has been fixed
   $items['admin/content/media/folder_list'] = array(
@@ -819,15 +821,15 @@ function media_browser_plus_menu(){
     'page arguments' => array('media_browser_plus_folder_list'),
     'file' => 'media_browser_plus.folders.inc',
     'access callback' => 'media_access',
-    'access arguments' => array('edit')
+    'access arguments' => array('administer media folders')
   );
   $items['admin/content/media/add_folder'] = array(
     'title' => 'Add Folder',
     'description' => 'Add a new media folder',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_folder_add'),
-    'access callback' => 'media_access',
-    'access arguments' => array('edit'),
+    'access callback' => 'media_browser_plus_access',
+    'access arguments' => array('administer media folders'),
     'file' => 'media_browser_plus.folders.inc',
   );
   $items['admin/content/media/folder/%media_browser_plus_folder/edit'] = array(
@@ -835,8 +837,8 @@ function media_browser_plus_menu(){
     'description' => 'Edit media folder',
     'page callback' => 'drupal_get_form',
     'page arguments'  => array('media_browser_plus_folder_edit', 4),
-    'access callback' => 'media_access',
-    'access arguments' => array('edit'),
+    'access callback' => 'media_browser_plus_access',
+    'access arguments' => array('administer media folders'),
     'file' => 'media_browser_plus.folders.inc'
   );
   $items['admin/content/media/folder/%media_browser_plus_folder/delete'] = array(
@@ -844,8 +846,8 @@ function media_browser_plus_menu(){
     'description' => 'Delete media folder',
     'page callback' => 'drupal_get_form',
     'page arguments'  => array('media_browser_plus_folder_delete', 4),
-    'access callback' => 'media_access',
-    'access arguments' => array('edit'),
+    'access callback' => 'media_browser_plus_access',
+    'access arguments' => array('administer media folders'),
     'file' => 'media_browser_plus.folders.inc'
   );
   $items['admin/content/media/%media/preview'] = array(
@@ -858,6 +860,27 @@ function media_browser_plus_menu(){
     'file' => 'media_browser_plus.module'
   );
   return $items;
+}
+
+function media_browser_plus_permission() {
+  return array(
+    'upload media' => array(
+      'title' => t('Upload media'),
+      'description' => t('Allow user to add media.'),
+    ),
+    'download media' => array(
+      'title' => t('Download Media'),
+      'description' => t('Allows the user to download the original media items.'),
+    ),
+    'administer media folders' => array(
+      'title' => t('Administer Media Folders'),
+      'description' => t('Allows the user to add, edite, delete and resort media folders.'), // @TODO better description
+    ),
+    'preview media' => array(
+      'title' => t('Preview media'),
+      'description' => t('Allows the user to view a configurable preview of the original media item.'), // @TODO better description
+    ),
+  );
 }
 
 function media_browser_plus_media_preview($form, &$form_state, $media) {
@@ -881,7 +904,7 @@ function media_browser_plus_media_operations() {
 }
 
 function media_browser_plus_access($op) {
-  return (user_access('administer media') || user_access($op . ' media'));
+  return (user_access('administer media') || user_access($op));
 }
 
 function media_browser_plus_media_browser_plus_save_field_preprocess_info() {
@@ -1117,6 +1140,7 @@ function media_browser_plus_media_filter(){
         '#description' => 'Enter a comma-separated list of words to filter your media.',
         '#required' => FALSE,
         '#delta' => 0,
+        '#language' => LANGUAGE_NONE,
         '#type' => 'textfield',
         '#autocomplete_path' => 'taxonomy/autocomplete/field_tags',
         '#element_validate' => array('media_browser_plus_prepare_taxonomy_autocomplete_validate', 'taxonomy_autocomplete_validate'))),
