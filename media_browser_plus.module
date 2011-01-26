@@ -443,7 +443,8 @@ function media_browser_plus_prepare_taxonomy_autocomplete_validate(&$element, &$
   // @TODO: fix
   $form_state['field'][$element['#field_name']][$element['#language']]['field'] = field_info_field($element['#field_name']);
   // fixes: undefined index #field_parents in field_widget_field()
-  $element['#field_parents'] = array();
+  if(!isset($element['#field_parents'])) 
+    $element['#field_parents'] = array();
 }
 
 /**
