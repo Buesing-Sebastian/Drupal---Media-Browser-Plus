@@ -1,8 +1,3 @@
-.media-filter-select {
-  height: 100px;
-  width: 200px;
-} 
-
 #folder {
   width: 200px;
   overflow:auto;
@@ -212,10 +207,18 @@ ul#navlist {
   margin-right: 20px;
 }
 
+#media_browser_plus_basket_panel a {
+  margin-right: 20px;
+}
+
 #media_browser_plus_basket_panel {
   text-align: right;
 }
 
 #edit-column-three {
   clear: both;
+}
+
+#media_browser_plus_preview_panel {
+  text-align: center;
 }

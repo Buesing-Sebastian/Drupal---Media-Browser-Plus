@@ -9,4 +9,3 @@ files[] = media_browser_plus.install
 files[] = media_browser_plus.folders.inc
 dependencies[] = media
 dependencies[] = taxonomy
-

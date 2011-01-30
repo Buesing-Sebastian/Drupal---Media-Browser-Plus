@@ -14,7 +14,9 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   // add css for both views
   $path = drupal_get_path('module', 'media_browser_plus');
   $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
+  $form['#attached']['css'][] = $path . '/css/colorbox.css';
   $form['#attached']['js'][] = $path . '/js/media_browser_plus.admin.menu.js';
+  $form['#attached']['js'][] = $path . '/js/colorbox/jquery.colorbox-min.js';
   // set base href for javascript requests
   $setting = array();
   $setting['media_browser_plus']['filter_active'] = isset($_SESSION['media-filter']);
@@ -27,7 +29,8 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   // access settings
   $setting['media_browser_plus']['folder_dnd_enabled'] = media_access('edit');
   $setting['media_browser_plus']['manage_folders'] = media_access('edit folders');
-  $setting['media_browser_plus']['add_files'] = media_access('upload media');
+  $setting['media_browser_plus']['filter_allowed'] = media_access('filter');
+  $setting['media_browser_plus']['add_files'] = media_access('upload');
   $form['#attached']['js'][] = array(
     'type' => 'setting',
     'data' => $setting,
@@ -35,6 +38,11 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   // check which mode we are in
   if(isset($form_state['build_info']['args'][0]) && $form_state['build_info']['args'][0] != 'thumbnails')
     return _media_browser_plus_media_admin_list_alter($form, $form_state);
+  // check access rights
+  if(!media_browser_plus_access('media grid view')) {
+    drupal_access_denied();
+    return array();
+  }
   // adding grid view js and css
   $form['#attached']['js'][] = $path . '/js/media_browser_plus.admin.js';
   drupal_add_library('system', 'ui.draggable');
@@ -68,8 +76,8 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   $form['buttons'] = array();
   $form['buttons']['selection_assets'] = array(
       '#type' => 'markup',
-      '#markup' => '<a href="#" id="media_main_view_select_all" >' . t('Select All') . '</a>' . 
-        '<a href="#" id="media_main_view_deselect_all" >' . t('Deselect All') . '</a>'
+      '#markup' => '<a href="#media_folder_table" id="media_main_view_select_all" >' . t('Select All') . '</a>' . 
+        '<a href="#media_folder_table" id="media_main_view_deselect_all" >' . t('Deselect All') . '</a>'
     );
   if(media_access('view'))
     $form['buttons']['view_media'] = array(
@@ -130,10 +138,10 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
     'empty' => t('No media added yet.')
   );
   // add filter
-  $form['filter'] = media_browser_plus_media_filter();
+  //$form['filter'] = media_browser_plus_media_filter(array(), $form_state);
   //$form['filter']['#prefix'] = '<div style="margin-right: 90px;">';
   //$form['filter']['#suffix'] = '</div>';
-  $form['filter']['#weight'] = -20;
+  //$form['filter']['#weight'] = -20;
   //unset($form['filter']);
   // and put everything into a neat little table
   $form['admin'] = array(
@@ -142,15 +150,21 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   );
   $header = array(array('data' => t('Media Basket')));
   // and the data
-  $form['basket_actions'] = array(
-    'download' => array(
-      '#type' => 'submit',
-      '#value' => t('Download'),
-      '#attributes' => array('id' => 'perform_download'),
-      '#limit_validation_errors' => array(),
-      '#validate' => array('media_browser_plus_media_admin_validate'),
-      '#submit' => array('media_browser_plus_download_images_submit'))
-  );
+  $form['basket_actions'] = array();
+  $form['basket_actions']['selection_assets'] = array(
+      '#type' => 'markup',
+      '#markup' => '<a href="#media_basket_table" id="media_basket_remove_all" >' . t('Remove All') . '</a>'
+    );
+  if(media_access('download')) {
+    $form['basket_actions']['download'] = array(
+        '#type' => 'submit',
+        '#value' => t('Download'),
+        '#attributes' => array('id' => 'perform_download'),
+        '#limit_validation_errors' => array(),
+        '#validate' => array('media_browser_plus_media_admin_validate'),
+        '#submit' => array('media_browser_plus_download_images_submit')
+    );
+  }
   $options = array(array(
       'media' => array(
         'data' => '<ul id="media-basket-list" class="media-list-thumbnails"></ul>')
@@ -171,6 +185,49 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
     '#type' => 'markup',
     '#markup' => theme('table', $table)
   );
+  //
+if(media_access('preview')) {
+    $header = array(
+      array(
+        'data' => t('Media Preview'),
+        'id' => array('media-preview-label'),));
+    // and the data
+    $form['preview_actions'] = array(
+      'previous' => array(
+        '#type' => 'submit',
+        '#value' => t('previous'),
+        '#attributes' => array('id' => 'previous_preview_item')),
+      'select' => array(
+        '#type' => 'submit',
+        '#value' => t('Select'),
+        '#attributes' => array('id' => 'select_preview_item')),
+      'next' => array(
+        '#type' => 'submit',
+        '#value' => t('next'),
+        '#attributes' => array('id' => 'next_preview_item'))
+    );
+    $options = array(array(
+        'media' => array(
+          'data' => '',
+          'id' => array('media_browser_plus_preview_content')
+      )),array(
+        'media' => array(
+          'data' => drupal_render($form['preview_actions']),
+          'id' => array('media_browser_plus_preview_panel'))
+      )
+    );
+    // table setup
+    $table = array(
+      'header' => $header,
+      'rows' => $options,
+      'attributes' => array('id' => 'media-preview-table'),
+      'empty' => t('No media added yet.')
+    );
+    $form['media-preview'] = array(
+      '#type' => 'markup',
+      '#markup' => '<div id="media-preview-table-container" style="display: none;">' . theme('table', $table) . '</div>'
+    );
+  }
   return $form;
 }
 
@@ -194,7 +251,7 @@ function media_browser_plus_delete_multiple_redirect($form, &$form_state) {
 }
 
 function media_browser_plus_download_images_submit($form, &$form_state) {
-  if(isset($form_state['input']['selected_media'])) {
+  if(isset($form_state['input']['selected_media']) && media_access('download')) {
     $ids = array_keys($form_state['input']['selected_media']);
     // only load those
     $conditions[] = array("property" => array("fid", array($ids), "IN"));
@@ -204,7 +261,7 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
     $zipFile = '/tmp/'.$name.'.zip';
     $zip = new ZipArchive;
     $res = $zip->open($zipFile, ZipArchive::CREATE);
-    if ($res === TRUE) {
+    if ($res === TRUE && count($media_entities->results)) {
       foreach($media_entities->results as $media) {
         $zip->addFile(drupal_realpath($media->uri), $media->filename);
       }
@@ -226,6 +283,11 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
  * used to alter the media list display
  */
 function _media_browser_plus_media_admin_list_alter(&$form, &$form_state){
+  // check access rights
+  if(!media_browser_plus_access('media list view')) {
+    drupal_access_denied();
+    return array();
+  }
   $header = array(
     'title' => array(
       'data' => t('Title'),
@@ -782,6 +844,16 @@ function media_browser_plus_menu(){
     'access callback' => 'media_access',
     'access arguments' => array('edit')
   );
+  $items['admin/content/media/filter'] = array(
+    'title' => 'Media Filter',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('media_browser_plus_media_filter'),
+    'file' => 'media_browser_plus.module',
+    'access callback' => 'media_access',
+    'access arguments' => array('filter'),
+    'type' => MENU_LOCAL_ACTION,
+    'context' => MENU_CONTEXT_INLINE
+  );
   $items['admin/content/media/thumbnailsJSON'] = array(
     'title' => 'Load Media Entities',
     'page callback' => 'media_browser_plus_thumbnailsJSON',
@@ -821,7 +893,7 @@ function media_browser_plus_menu(){
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_folder_list'),
     'file' => 'media_browser_plus.folders.inc',
-    'access callback' => 'media_access',
+    'access callback' => 'media_browser_plus_access',
     'access arguments' => array('administer media folders')
   );
   $items['admin/content/media/add_folder'] = array(
@@ -863,8 +935,25 @@ function media_browser_plus_menu(){
   return $items;
 }
 
+function media_browser_plus_menu_alter(&$items) {
+  $items['admin/content/media']['access arguments'] = array('access media backend');
+  $items['admin/content/media']['access callback'] = array('media_browser_plus_access');
+}
+
 function media_browser_plus_permission() {
   return array(
+    'media grid view' => array(
+      'title' => t('Grid View'),
+      'description' => t('Allow users to use the grid view.'),
+    ),
+    'media list view' => array(
+      'title' => t('List View'),
+      'description' => t('Allow users to use the list view.'),
+    ),
+    'access media backend' => array(
+      'title' => t('Access media backend'),
+      'description' => t('Allow user to access the media backend according to their privileges.'),
+    ),
     'upload media' => array(
       'title' => t('Upload media'),
       'description' => t('Allow user to add media.'),
@@ -872,6 +961,10 @@ function media_browser_plus_permission() {
     'download media' => array(
       'title' => t('Download Media'),
       'description' => t('Allows the user to download the original media items.'),
+    ),
+    'filter media' => array(
+      'title' => t('Filter Media'),
+      'description' => t('Allows the user to filter the displayed media in the backend.'),
     ),
     'administer media folders' => array(
       'title' => t('Administer Media Folders'),
@@ -884,11 +977,71 @@ function media_browser_plus_permission() {
   );
 }
 
+/**
+ * Enter description here ...
+ * @param $field
+ * @param $entity_type
+ * @param $entity
+ */
+function media_browser_plus_file_download_access($field, $entity_type, $entity) {
+  if($entity_type == 'media') {
+    foreach (module_implements('media_entity_access') as $module) {
+      $bool = module_invoke($module, 'media_entity_access', $entity);
+      if($bool === FALSE) {
+        return FALSE;
+      }
+    }
+    // return true if no module returned false
+    return TRUE;
+  }
+}
+
+/**
+ * revokes the general "view media" == "download media" access rule
+ * @param $grants
+ * @param $field
+ * @param $entity_type
+ * @param $entity
+ */
+function media_browser_plus_file_download_access_alter(&$grants, $field, $entity_type, $entity = null) {
+  if($entity_type == 'media'){
+    unset($grants['media']);
+  }
+}
+
 function media_browser_plus_media_preview($form, &$form_state, $media) {
-  $form['preview'] = media_get_thumbnail_preview(media_load($media->fid), TRUE);
-  $form['actions'] = array('#type' => 'actions');
-  $form['actions']['submit'] = array('#type' => 'submit', '#value' => t('Close Preview'));
-  return $form;
+  if($media->type == 'image') {
+    $maxWidth = (int)$_POST['maxWidth'];
+    $maxHeight = (int)$_POST['maxHeight'];
+    //echo drupal_render($form['preview']);
+    list($sx, $sy) = getimagesize(drupal_realpath($media->uri));
+    if($sx > $maxWidth){
+      $ratio = bcdiv($maxWidth, $sx, 5);
+      $sx = $maxWidth;
+      $sy = bcmul($sy, $ratio, 0);
+    }
+    if($sy > $maxHeight){
+      $ratio = bcdiv($maxHeight, $sy, 5);
+      $sy = $maxHeight;
+      $sx = bcmul($sx, $ratio, 0);
+    }
+    $base_url = "http://" . $_SERVER['HTTP_HOST'] . base_path();
+    $uri = "";
+    if(strstr($media->uri, "private://")) {
+      $stream = new DrupalPrivateStreamWrapper();
+    } else {
+      $stream = new DrupalPublicStreamWrapper();
+    }
+    $stream->setUri($media->uri);
+    $uri = $stream->getExternalUrl($media->uri);
+    // output
+    echo '<div class="preview-metadata" title="'.$media->filename.'">' .
+      '<img width="'.$sx.'" height="'.$sy.'" src="'.$uri.'" /></div>';
+  } else {
+    $form['preview'] = media_get_thumbnail_preview(media_load($media->fid), TRUE);
+    echo drupal_render($form['preview']);
+  }
+  die();
 }
 
 function media_browser_plus_media_preview_submit($form, &$form_state) {
@@ -1025,9 +1178,9 @@ function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, 
  * helper function
  */
 function _media_browser_plus_create_relationship_list($categories){
-  $return 	= array();
-  $parents 	= array();
-  $children	= array();
+  $return = array();
+  $parents = array();
+  $children = array();
   //
   foreach($categories as $key=>$value){
     // root node
@@ -1081,6 +1234,9 @@ function _media_browser_plus_has_unsorted_media(){
  */
 function media_browser_plus_media_filter(){
   $form = array();
+  $path = drupal_get_path('module', 'media_browser_plus');
+  $form['#attached']['js'][] = $path . '/js/media_browser_plus.filter.js';
+  $form['#attached']['css'][] = $path . '/css/media_browser_plus.filter.css';
   // getting the media folders for filter selection
   $folders = _media_browser_plus_folder_list();
   // setting default filter selections - will be overwritten when a filter is active
@@ -1111,8 +1267,18 @@ function media_browser_plus_media_filter(){
   $types = media_type_get_types();
   $media_types = array();
   // user labels as display and value for backend
-  foreach($types as $value=>$type){
-    $media_types[$value] = $type->label;
+  foreach($types as $value=>$type) {
+    $access = true;
+    foreach (module_implements('media_type_access') as $module) {
+      $access = module_invoke($module, 'media_type_access', $type);
+      if($access === FALSE) {
+        break;
+      } else {
+        $access = true;
+      }
+    }
+    if($access)
+      $media_types[$value] = $type->label;
   }
   $form['filter'] = array(
     '#type' => 'fieldset',
@@ -1120,10 +1286,14 @@ function media_browser_plus_media_filter(){
     '#collapsible' => FALSE,
     '#collapsed' => FALSE,
     '#weight' => -10,
+    '#prefix' => '<div id="media-preview-wrapper">',
+    '#suffix' => '</div>',
+    '#attributes' => array('id' => 'media-filter'),
     'column_one' => array(
       '#type' => 'container',
       '#prefix' => '<div style="float:left; padding-right: 20px;">',
       '#suffix' => '</div>',
+      '#attributes' => array(),
       'filename' => array(
         '#type' => 'textfield',
         '#title' => t('Title'),
@@ -1132,6 +1302,7 @@ function media_browser_plus_media_filter(){
         '#value' => (isset($_SESSION['media-filter']['filename']) ? $_SESSION['media-filter']['filename'] : ""),
         '#required' => FALSE),
       'field_tags' => array(
+        '#attributes' => array('id' => 'media-field-tags-filter'),
         '#type' => 'textfield',
         '#value' => $field_tags,
         '#field_name' => 'field_tags',
@@ -1149,42 +1320,45 @@ function media_browser_plus_media_filter(){
       '#type' => 'container',
       '#prefix' => '<div style="float:left; padding-right: 20px;">',
       '#suffix' => '</div>',
+      '#attributes' => array(),
       'criterias' => array(
-      '#type' => 'container',
-      'media_type' => array(
-        '#type' => 'select',
-        '#title' => t('Media Type'),
-        '#multiple' => TRUE,
-        '#options' => $media_types,
-        '#default_value' => $selected_types,
-        '#weight' => 5,
-        '#required' => FALSE,
-        '#attributes' => array('class' => array('media-filter-select')),
-        '#prefix' => '<div style="float:left; padding-right: 20px;">',
-        '#suffix' => '</div>'),
-      'field_folder' => array(
-        '#type' => 'select',
-        '#title' => t('Media Folder'),
-        '#multiple' => TRUE,
-        '#required' => FALSE,
-        '#options' => $folders,
-        '#default_value' => $selected_folders,
-        '#weight' => 6,
-        '#attributes' => array('class' => array('media-filter-select')),
-        '#prefix' => '<div style="float:left; padding-right: 20px;">',
-        '#suffix' => '</div>'),
-      'include_subfolders' => array(
-        '#type' => 'checkbox',
-        '#weight' => 10,
-        '#attributes' => array('class' => array('media-filter')),
-        '#title' => t('include subfolders of selected folders'),
-        '#default_value' => (isset($_SESSION['media-filter']['include_subfolders']) ? 
+        '#type' => 'container',
+        '#attributes' => array(),
+        'media_type' => array(
+          '#type' => 'select',
+          '#title' => t('Media Type'),
+          '#multiple' => TRUE,
+          '#options' => $media_types,
+          '#default_value' => $selected_types,
+          '#weight' => 5,
+          '#required' => FALSE,
+          '#attributes' => array('class' => array('media-filter-select')),
+          '#prefix' => '<div style="float:left; padding-right: 20px;">',
+          '#suffix' => '</div>'),
+        'field_folder' => array(
+          '#type' => 'select',
+          '#title' => t('Media Folder'),
+          '#multiple' => TRUE,
+          '#required' => FALSE,
+          '#options' => $folders,
+          '#default_value' => $selected_folders,
+          '#weight' => 6,
+          '#attributes' => array('class' => array('media-filter-select')),
+          '#prefix' => '<div style="float:left; padding-right: 20px;">',
+          '#suffix' => '</div>'),
+        'include_subfolders' => array(
+          '#type' => 'checkbox',
+          '#weight' => 10,
+          '#attributes' => array('class' => array('media-filter')),
+          '#title' => t('include subfolders of selected folders'),
+          '#default_value' => (isset($_SESSION['media-filter']['include_subfolders']) ? 
                      $_SESSION['media-filter']['include_subfolders'] : 0))
     )),
     'column_three' => array(
       '#type' => 'container',
       '#prefix' => '<div style="float:left; padding-right: 20px;">',
       '#suffix' => '</div>',
+      '#attributes' => array(),
       'submit' => array(
         '#type' => 'submit',
         '#value' => isset($_SESSION['media-filter']) ? t('Update Filter') : t('Create Filter'),
@@ -1216,6 +1390,7 @@ function _media_browser_plus_folder_list($prefixPadding = "-"){
   //
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
   $folders = taxonomy_get_tree($vocabulary->vid);
+  $folders = _media_browser_plus_filter_folder_access($folders);
   // start with empty list
   $list = array();
   // and fill it with padded folders
@@ -1302,7 +1477,7 @@ function media_browser_plus_media_filter_submit($form, &$form_state) {
   $_SESSION['media-filter']['field_folder'] = array_keys($temp);
   //
   // go back to media overview
-  $form_state['redirect'] = array('admin/content/media');
+  //$form_state['redirect'] = array('admin/content/media');
 }
 
 /**
@@ -1327,7 +1502,7 @@ function media_browser_plus_media_filter_clear($form, &$form_state) {
   // remove filter
   unset($_SESSION['media-filter']);
   // go back to media overview
-  $form_state['redirect'] = array('admin/content/media');
+  //$form_state['redirect'] = array('admin/content/media');
 }
 
 /**
@@ -1396,6 +1571,10 @@ function media_browser_plus_load_multiple($variables){
         $params['conditions'][] = array("field" => array("field_tags", "tid", $tag_id, "="));
       }
     }
+  }
+  // allow other modules to add/alter conditions
+  foreach (module_implements('media_access_conditions') as $module) {
+    $params['conditions'] = array_merge(module_invoke($module, 'media_access_conditions'), $params['conditions']);
   }
   $query = new EntityFieldQuery();
   // set entity type to media
@@ -1482,11 +1661,10 @@ function media_browser_plus_load_multiple($variables){
  *
  * @param array $folders
  */
-function _media_browser_plus_filter_folders($folders){
+function _media_browser_plus_filter_folders($folders) {
   // no filter active, return unchanged $folders array
-  if(!isset($_SESSION['media-filter']))
-    return $folders;
-  else{
+  $filtered_folders = $folders;
+  if(isset($_SESSION['media-filter'])) {
     $folder_filtered = array();
     // look through the tree and add elements that match filter
     foreach($folders as $item){
@@ -1494,10 +1672,34 @@ function _media_browser_plus_filter_folders($folders){
         $folder_filtered[] = $item;
       }
     }
-    return $folder_filtered;
+    $filtered_folders = $folder_filtered;
   }
+  $filtered_folders = _media_browser_plus_filter_folder_access($filtered_folders);
+  return $filtered_folders;
 }
 
+/**
+ * Enter description here ...
+ * @param $folders
+ */
+function _media_browser_plus_filter_folder_access($folders) {
+  $temp_folders = $folders;
+  $filtered_folders = array();
+  foreach($temp_folders as $item) {
+    $access = true;
+    foreach (module_implements('media_folder_access') as $module) {
+      $access = module_invoke($module, 'media_folder_access', $item);
+      if($access === FALSE) {
+        break;
+      } else {
+        $access = true;
+      }
+    }
+    if($access)
+      $filtered_folders[] = $item;
+  }
+  return $filtered_folders;
+}
 /**
  * Enter description here ...
  */

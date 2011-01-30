@@ -2,6 +2,8 @@
   Drupal.behaviors.media_browser_folders = {
     attach: function (context) {
       var gallery = $('#media-thumb-list');
+      var selectedPreviewIndex = 0;
+      var selectedPreviewItems = new Array();
       // Load active folder
       Drupal.behaviors.media_browser_folders.loadFolderContents($("div.folder_load:first"), 0);
       $("div.folder_load:first").addClass('selectedFolder');
@@ -32,27 +34,67 @@
         
       }
       $("#media-basket-list").droppable({
-          accept: "#media-thumb-list > li",
-          drop: Drupal.behaviors.media_browser_folders.dropSelectedImage,
-          over: function (event, ui) {
-            $(this).toggleClass('dragOverDrop');
-          },
-          out: function (event, ui) {
-            $(this).toggleClass('dragOverDrop');
-          }
-        });
+        accept: "#media-thumb-list > li",
+        drop: Drupal.behaviors.media_browser_folders.dropSelectedMedia,
+        over: function (event, ui) {
+          $(this).toggleClass('dragOverDrop');
+        },
+        out: function (event, ui) {
+          $(this).toggleClass('dragOverDrop');
+        }
+      }); 
+      $('#media-filter-launch').bind('click', function( event ) {
+        $.colorbox({iframe:true, href:Drupal.settings.media_browser_plus.url +
+          "?q=admin/content/media/filter", width:"90%", height:"90%", onClosed: Drupal.behaviors.media_browser_folders.reloadData});
+        return false;
+      });
       $('#media_buttons_view').bind('click', function( event ) {
           $media = $("div.selected:first", $('#media-thumb-list'));
           if($media.html() != null)
             window.open(Drupal.settings.media_browser_plus.url +
               "?q=media/" + $media.parent().attr('fid') + "/view");
+          return false;
+        });
+      $('#media_buttons_preview').bind('click', function( event ) {
+        // reset selectionArray
+        selectedPreviewItems = new Array();
+        selectedPreviewIndex = 0;
+        $("div.selected", $('#media-thumb-list')).each(function(index) {
+          var $media = $(this);
+          // check for double adding
+          selectedPreviewItems.push($media.parent().attr('fid'));
+        });
+        if(selectedPreviewItems.length > 0) {
+          // open an empty colorbox to show activity
+          $.colorbox({initialWidth:"300px", initialHeight:"200px"});
+          Drupal.behaviors.media_browser_folders.loadPreview(selectedPreviewItems[selectedPreviewIndex]);
+        }
+      return false;
+      });
+      $('#media_basket_remove_all').bind('click', function( event ) {
+        $('li', $('#media-basket-list')).each(function(index){
+          var $media = $(this);
+          $media.remove();
+        });
         return false;
       });
-      $('#media_buttons_preview').bind('click', function( event ) {
-          $media = $("div.selected:first", $('#media-thumb-list'));
-          if($media.html() != null)
-            window.location = Drupal.settings.media_browser_plus.url +
-              "?q=admin/content/media/" + $media.parent().attr('fid') + "/preview";
+      $('#previous_preview_item').bind('click', function( event ) {
+        selectedPreviewIndex--;
+        if(selectedPreviewIndex < 0)
+          selectedPreviewIndex = selectedPreviewItems.length - 1;
+        Drupal.behaviors.media_browser_folders.loadPreview(selectedPreviewItems[selectedPreviewIndex]);
+        return false;
+      }); 
+      $('#select_preview_item').bind('click', function( event ) {
+        $media = $('div.media-item', $('li[fid="' + selectedPreviewItems[selectedPreviewIndex] + '"]', $('#media-thumb-list')));
+        Drupal.behaviors.media_browser_folders.selectMedia($media);
+        return false;
+      });
+      $('#next_preview_item').bind('click', function( event ) {
+        selectedPreviewIndex++;
+        if(selectedPreviewIndex > (selectedPreviewItems.length -1))
+          selectedPreviewIndex = 0;
+        Drupal.behaviors.media_browser_folders.loadPreview(selectedPreviewItems[selectedPreviewIndex]);
         return false;
       });
       $('#media_main_view_select_all').bind('click', function( event ) {
@@ -68,7 +110,7 @@
           });
       });
       $('#media_buttons_select').bind('click', function( event ) {
-        Drupal.behaviors.media_browser_folders.selectImages();
+        Drupal.behaviors.media_browser_folders.selectMediaItems();
         return false;
       });
     },
@@ -103,27 +145,31 @@
           }
         }
     },
-    selectImages : function (data) {
+    selectMediaItems : function (data) {
       $('div.selected', $('#media-thumb-list')).each(function(index){
         // grab item
         var $media = $(this);
-        // check for double adding
-        $item_dup = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
-        if($item_dup.html() == null) {
-          var item = '<li fid="' + $media.parent().attr('fid') + '">' + $media.parent().html() + '</li>';
-          item += '<input type="hidden" name="selected_media['+$media.parent().attr('fid')+']" value="1">';
-          $item = $(item);
-          $item.bind('click', function( event ) {
-            // grab item
-            $item_b = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
-            $item_b.remove();
-            return true;
-            });
-        $item.appendTo('#media-basket-list');
-        }
+        Drupal.behaviors.media_browser_folders.selectMedia($media);
       });
     },
-    dropSelectedImage : function (event , ui) {
+    selectMedia: function (data) {
+      // check for double adding
+      $media = $(data);
+      $item_dup = $('li[fid="' + $media.parent().attr('fid') +'"]', $('#media-basket-list'));
+      if($item_dup.html() == null) {
+        var item = '<li fid="' + $media.parent().attr('fid') + '">' + $media.parent().html() + '</li>';
+        item += '<input type="hidden" name="selected_media['+$media.parent().attr('fid')+']" value="1">';
+        $item = $(item);
+        $item.bind('click', function( event ) {
+          // grab item
+          $item_b = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
+          $item_b.remove();
+          return true;
+          });
+        $item.appendTo('#media-basket-list');
+      }
+    },
+    dropSelectedMedia : function (event , ui) {
       $clone = $(ui.draggable);
       $media = $('li[fid="'+$clone.attr('fid')+'"]', $('#media-thumb-list'));
       $id = $media.attr('fid');
@@ -131,8 +177,8 @@
       $item_dup = $('li[fid="'+$id+'"]', $('#media-basket-list'));
       if($item_dup.html() == null) {
         var item = '<li fid="' + $id + '">' + $media.html() + '</li>';
-        item += '<input type="hidden" name="selected_media['+$id+']" value="1">';
         $item = $(item);
+        $('.media-item', $item).append('<input type="hidden" name="selected_media['+$id+']" value="1">');
         $item.bind('click', function( event ) {
           // grab item
           $item_b = $('li[fid="'+$id+'"]', $('#media-basket-list'));
@@ -141,7 +187,7 @@
           });
         $item.appendTo('#media-basket-list');
       }
-      Drupal.behaviors.media_browser_folders.selectImages();
+      Drupal.behaviors.media_browser_folders.selectMediaItems();
     },
     loadFolderContents: function ($item, $page) {
       // check against double loading of the same folder
@@ -210,15 +256,13 @@
           $input.attr('checked', $input.attr('checked') == false);
           return true;
         });
-        if(Drupal.settings.media_browser_plus.folder_dnd_enabled) {
-          $item.draggable({
-            cancel: "a.ui-icon", // clicking an icon won't initiate dragging
-            revert: "invalid", // when not dropped, the item will revert back to its initial position
-            containment: "document", // stick to demo-frame if present
-            helper: "clone",
-            cursor: "move"
-          });
-        }
+        $item.draggable({
+          cancel: "a.ui-icon", // clicking an icon won't initiate dragging
+          revert: "invalid", // when not dropped, the item will revert back to its initial position
+          containment: "document", // stick to demo-frame if present
+          helper: "clone",
+          cursor: "move"
+        });
       }
       });
       // handle paging menu:
@@ -246,6 +290,39 @@
       // Toggle the display of its <ul> elements.
       $item.parent().children('ul').toggleClass('hidden');
       return false;
+    },
+    loadPreview: function (id) {
+      if(id > 0) {
+        $('#media-preview-label').html('...');
+        var myWidth = 0, myHeight = 0;
+        if( typeof( window.innerWidth ) == 'number' ) {
+          //Non-IE
+          myWidth = window.innerWidth;
+          myHeight = window.innerHeight;
+        } else if( document.documentElement && ( document.documentElement.clientWidth || document.documentElement.clientHeight ) ) {
+          //IE 6+ in 'standards compliant mode'
+          myWidth = document.documentElement.clientWidth;
+          myHeight = document.documentElement.clientHeight;
+        } else if( document.body && ( document.body.clientWidth || document.body.clientHeight ) ) {
+          //IE 4 compatible
+          myWidth = document.body.clientWidth;
+          myHeight = document.body.clientHeight;
+        }
+        $maxWidth = myWidth - 50;
+        $maxHeight = myHeight - 150;
+        $.post(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/" + id +"/preview", { maxWidth: $maxWidth, maxHeight: $maxHeight}, Drupal.behaviors.media_browser_folders.displayLoadedPreview);
+        $('#media_browser_plus_preview_content').html('<img src="'+Drupal.settings.media_browser_plus.images_url+'loading.gif" />');
+      }
+    },
+    displayLoadedPreview: function (data) {
+      var $item = $(this);
+      $('#media_browser_plus_preview_content').html(data);
+      $meta = $('.preview-metadata', $('#media_browser_plus_preview_content'));
+      $.colorbox({inline:true, href:"#media-preview-table"});
+      $('#media-preview-label').html($meta.attr('title'));
+    },
+    reloadData: function (data) {
+      window.location.reload();
     }
   };
 })(jQuery);
