@@ -100,13 +100,19 @@
       $('#media_main_view_select_all').bind('click', function( event ) {
           $('div.media-item', $('#media-thumb-list')).each(function(index){
             var $media = $(this);
+            var $input = $('input', $media.parent());
+            //
             $media.addClass('selected');
+            $input.attr('checked', true);
           });
       });
       $('#media_main_view_deselect_all').bind('click', function( event ) {
           $('div.media-item', $('#media-thumb-list')).each(function(index){
             var $media = $(this);
+            var $input = $('input', $media.parent());
+            //
             $media.removeClass('selected');
+            $input.attr('checked', false);
           });
       });
       $('#media_buttons_select').bind('click', function( event ) {

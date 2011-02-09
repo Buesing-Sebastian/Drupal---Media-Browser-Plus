@@ -49,6 +49,9 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   drupal_add_library('system', 'ui.droppable');
   // removing options form part
   unset($form['options']);
+  if(!media_browser_plus_access('media list view') ||
+    !media_browser_plus_access('media grid view'))
+    unset($form['switch']);
   // load the media folders
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
   $folders = taxonomy_get_tree($vocabulary->vid);
