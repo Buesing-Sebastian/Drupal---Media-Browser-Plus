@@ -1,5 +1,5 @@
 <?php
-// $Id$ 
+// $Id$
 
 /**
  * @file
@@ -79,7 +79,7 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   $form['buttons'] = array();
   $form['buttons']['selection_assets'] = array(
       '#type' => 'markup',
-      '#markup' => '<a href="#media_folder_table" id="media_main_view_select_all" >' . t('Select All') . '</a>' . 
+      '#markup' => '<a href="#media_folder_table" id="media_main_view_select_all" >' . t('Select All') . '</a>' .
         '<a href="#media_folder_table" id="media_main_view_deselect_all" >' . t('Deselect All') . '</a>'
     );
   if(media_access('view'))
@@ -508,7 +508,7 @@ function media_browser_plus_prepare_taxonomy_autocomplete_validate(&$element, &$
   // @TODO: fix
   $form_state['field'][$element['#field_name']][$element['#language']]['field'] = field_info_field($element['#field_name']);
   // fixes: undefined index #field_parents in field_widget_field()
-  if(!isset($element['#field_parents'])) 
+  if(!isset($element['#field_parents']))
     $element['#field_parents'] = array();
 }
 
@@ -550,7 +550,7 @@ function media_browser_plus_submit($form, &$form_state) {
   }
   // apply folder
   foreach ($media_entities as $media) {
-      $media->field_folder[LANGUAGE_NONE] = $form_state['values']['field_folder'];
+      $media->field_folder[LANGUAGE_NONE] = array(array('tid' => $form_state['values']['field_folder']));
   }
   // If the new media is from a 3rd party provider, and that provider also
   // provides MRSS data about the media, then populate the title and description
@@ -748,7 +748,7 @@ function media_browser_plus_edit_multiple_form($form, &$form_state, $fids) {
     $form['edit-select']['edit-' . $media->fid] = array(
       '#type' => 'markup',
       '#markup' => '<li><div id="media-select-' . $media->fid . '" class="media-select" style="display: inline;">' .
-        $thumb[0]['#markup'] . 
+        $thumb[0]['#markup'] .
         '</div></li>');
      $path = drupal_get_path('module', 'media');
      module_load_include('inc', 'media', 'media.pages');
@@ -1087,7 +1087,7 @@ function media_browser_plus_media_browser_plus_save_field_preprocess($name, $val
       $media->field_tags = array(LANGUAGE_NONE => media_browser_plus_load_tag_terms($value[LANGUAGE_NONE], true, true));
     break;
     case('field_description'):
-      $media->field_description = array(LANGUAGE_NONE => 
+      $media->field_description = array(LANGUAGE_NONE =>
         array(
           array(
             'value' =>$value[LANGUAGE_NONE],
@@ -1126,7 +1126,7 @@ function _media_browser_plus_folder_hierarchy_list($list){
     }
     return _media_browser_plus_folder_hierarchy_list_helper($list['parents'], $list['children']);
   }
-  //	
+  //
 }
 
 /**
@@ -1354,7 +1354,7 @@ function media_browser_plus_media_filter(){
           '#weight' => 10,
           '#attributes' => array('class' => array('media-filter')),
           '#title' => t('include subfolders of selected folders'),
-          '#default_value' => (isset($_SESSION['media-filter']['include_subfolders']) ? 
+          '#default_value' => (isset($_SESSION['media-filter']['include_subfolders']) ?
                      $_SESSION['media-filter']['include_subfolders'] : 0))
     )),
     'column_three' => array(
@@ -1399,7 +1399,7 @@ function _media_browser_plus_folder_list($prefixPadding = "-"){
   // and fill it with padded folders
   foreach($folders as $folder){
     $pad = (($folder->depth * strlen($prefixPadding)) + strlen($folder->name));
-    $list[$folder->tid] = str_pad($folder->name, $pad, $prefixPadding, STR_PAD_LEFT); 
+    $list[$folder->tid] = str_pad($folder->name, $pad, $prefixPadding, STR_PAD_LEFT);
   }
   return $list;
 }
@@ -1535,7 +1535,7 @@ function media_browser_plus_media_filter_clear_validate($form, &$form_state) {
  *   array(array("entity" => array("comlumn", "direction")),
  *         array("property" => array("comlumn", "direction")),
  *         array("field" => array("comlumn", "direction")))
- * $header 
+ * $header
  *   table header used for sorting
  * $per_page
  *   items per page
@@ -1617,7 +1617,7 @@ function media_browser_plus_load_multiple($variables){
     // look what type we have
     switch(array_pop(array_keys($condition))){
       case('entity'):
-        $query->entityOrderBy($condition['entity'][0], 
+        $query->entityOrderBy($condition['entity'][0],
           $condition['entity'][1]);
       break;
       case('property'):
@@ -1773,11 +1773,11 @@ function media_browser_plus_media_settings($form, &$form_state = array()) {
       '#maxlength' => 4,
       '#required' => TRUE)
   );
-  
+
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array('#type' => 'submit', '#value' => t('Save Changes'));
   return $form;
-  
+
 }
 
 function media_browser_plus_media_settings_submit($form, &$form_state) {
@@ -1817,7 +1817,7 @@ function _media_browser_plus_folder_empty($folder_id){
   $condition = array(array("field" => array("field_folder", "tid", array($folder_id), "IN")));
   $variables = array(
     "conditions" => $condition,
-    "per_page" => 1, 
+    "per_page" => 1,
     "ids_only" => true);
   $media = media_browser_plus_load_multiple($variables);
   // restore paging values if necessary
