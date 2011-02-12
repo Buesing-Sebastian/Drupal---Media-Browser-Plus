@@ -1,0 +1,316 @@
+<?php
+
+/**
+ * Enter description here ...
+ * @param unknown_type $entity
+ */
+function media_image_agents_media_entity_access($media_entity) {
+  // if we have no agent we allow the access and let other modules deny it
+  if(!_media_image_agents_restrict_user())
+    return true;
+  // check every condition
+  if(!in_array($media_entity->field_folder[LANGUAGE_NONE][0]['tid'], array_values(variable_get('media_image_agents_field_folder')))) {
+    return false;
+  }
+  if(!in_array($media_entity->type, explode(",", variable_get('media_image_agents_media_types')))) {
+    return false;
+  }
+  // and tag setting
+  $required_tags = array_values(variable_get('media_image_agents_field_tags'));
+  if(count($required_tags)) {
+    if((!isset($media_entity->field_tags[LANGUAGE_NONE]) || count($media_entity->field_tags[LANGUAGE_NONE]) == 0)
+      && count($required_tags) != 0) {
+      return false;
+    }
+    if(variable_get('media_image_agents_match_all_tags')) {
+      foreach($required_tags as $tag) {
+        $needle = array('tid' => $tag);
+        if(!in_array($needle, $media_entity->field_tags[LANGUAGE_NONE])) {
+          return false;
+        }
+      }
+    } else {
+      $match = false;
+      foreach($required_tags as $tag) {
+        $needle = array('tid' => $tag);
+        if(in_array($needle, $media_entity->field_tags[LANGUAGE_NONE])) {
+          $match = true;
+        }
+      }
+      return $match;
+    }
+  }
+}
+
+function media_image_agents_media_folder_access($media_folder) {
+  if(!_media_image_agents_restrict_user())
+    return true;
+  if(count(variable_get('media_image_agents_field_folder')))
+    return in_array($media_folder->tid, array_values(variable_get('media_image_agents_field_folder')));
+}
+
+function media_image_agents_media_type_access($media_type) {
+  if(!_media_image_agents_restrict_user())
+    return true;
+  $types = explode(",", variable_get('media_image_agents_media_types'));
+  if(count($types))
+    return in_array($media_type->name, $types);
+}
+
+/**
+ * Enter description here ...
+ */
+function media_image_agents_media_access_conditions() {
+  // create simple cond
+  $conditions = array();
+    if(_media_image_agents_restrict_user()) {
+    $conditions[] = array("property" => array("type", explode(",", variable_get('media_image_agents_media_types')), "IN"));
+    $conditions[] = array("field" => array("field_folder", "tid", array_values(variable_get('media_image_agents_field_folder')), "IN"));
+    // checking for tags mode
+    $required_tags = array_values(variable_get('media_image_agents_field_tags'));
+    if(count(variable_get('media_image_agents_match_all_tags'))) {
+      foreach($required_tags as $tag) {
+        $conditions[] = array("field" => array("field_tags", "tid", $tag, "="));
+      }
+    } else {
+      $conditions[] = array("field" => array("field_tags", "tid", $required_tags, "IN"));
+    }
+  }
+  return $conditions;
+}
+
+/**
+ * Enter description here ...
+ * @param $form
+ * @param $form_state
+ */
+function media_image_agents_settings($form, &$form_state) {
+  // use layout form media browser plus
+  $path = drupal_get_path('module', 'media_browser_plus');
+  $form['#attached']['css'][] = $path . '/css/media_browser_plus.filter.css';
+  // getting the media folders for filter selection
+  $folders = _media_browser_plus_folder_list();
+  // setting default filter selections - will be overwritten when a filter is active
+  $selected_types = array_keys(media_type_get_types());
+  $selected_folders = array_keys($folders);
+  // apply filter settings
+  if(count(variable_get('media_image_agents_media_types'))){
+    $selected_types = explode("," ,variable_get('media_image_agents_media_types'));
+  }
+  if(count(variable_get('media_image_agents_field_folder'))){
+    $selected_folders = variable_get('media_image_agents_field_folder');
+  }
+  // check for tags
+  $field_tags = "";
+  if(count(variable_get('media_image_agents_field_tags'))){
+    // use name buffer array...
+    $names = array();
+    foreach(variable_get('media_image_agents_field_tags') as $tid){
+      $term = taxonomy_term_load($tid);
+      if($term)
+        $names[] = $term->name;
+    }
+    // .. to be able to nicely implode with clean comma seperation
+    $field_tags = implode(", ", $names);
+  }
+  // get media types
+  $types = media_type_get_types();
+  $media_types = array();
+  // user labels as display and value for backend
+  foreach($types as $value=>$type){
+    $media_types[$value] = $type->label;
+  }
+  $form['filter'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Specify Access Filter'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#weight' => -10,
+    '#prefix' => '<div id="media-preview-wrapper">',
+    '#suffix' => '</div>',
+    '#attributes' => array('id' => 'media-filter'),
+    'column_one' => array(
+      '#type' => 'container',
+      '#prefix' => '<div style="float:left; padding-right: 20px;">',
+      '#suffix' => '</div>',
+      '#attributes' => array(),
+      'field_tags' => array(
+        '#attributes' => array('id' => 'media-field-tags-filter'),
+        '#type' => 'textfield',
+        '#value' => $field_tags,
+        '#field_name' => 'field_tags',
+        '#columns' => array('tid'),
+        '#title' => 'Tags',
+        '#size' => 40,
+        '#description' => 'Enter a comma-separated list of words to filter your media.',
+        '#required' => FALSE,
+        '#delta' => 0,
+        '#language' => LANGUAGE_NONE,
+        '#type' => 'textfield',
+        '#autocomplete_path' => 'taxonomy/autocomplete/field_tags',
+        '#element_validate' => array('media_browser_plus_prepare_taxonomy_autocomplete_validate', 'taxonomy_autocomplete_validate')),
+      'match_all_tags' => array(
+          '#type' => 'checkbox',
+          '#weight' => 10,
+          '#attributes' => array('class' => array('media-filter')),
+          '#title' => t('Items must match all the listed tags'),
+          '#default_value' => variable_get('media_image_agents_match_all_tags'))),
+    'column_two' => array(
+      '#type' => 'container',
+      '#prefix' => '<div style="float:left; padding-right: 20px;">',
+      '#suffix' => '</div>',
+      '#attributes' => array(),
+      'criterias' => array(
+        '#type' => 'container',
+        '#attributes' => array(),
+        'media_type' => array(
+          '#type' => 'select',
+          '#title' => t('Media Type'),
+          '#multiple' => TRUE,
+          '#options' => $media_types,
+          '#default_value' => $selected_types,
+          '#weight' => 5,
+          '#required' => FALSE,
+          '#attributes' => array('class' => array('media-filter-select')),
+          '#prefix' => '<div style="float:left; padding-right: 20px;">',
+          '#suffix' => '</div>'),
+        'field_folder' => array(
+          '#type' => 'select',
+          '#title' => t('Media Folder'),
+          '#multiple' => TRUE,
+          '#required' => FALSE,
+          '#options' => $folders,
+          '#default_value' => $selected_folders,
+          '#weight' => 6,
+          '#attributes' => array('class' => array('media-filter-select')),
+          '#prefix' => '<div style="float:left; padding-right: 20px;">',
+          '#suffix' => '</div>'),
+        'include_subfolders' => array(
+          '#type' => 'checkbox',
+          '#weight' => 10,
+          '#attributes' => array('class' => array('media-filter')),
+          '#title' => t('include subfolders of selected folders'),
+          '#default_value' => variable_get('media_image_agents_include_subfolders'))
+    )),
+  );
+  $role_options = array();
+  foreach(user_roles() as $key=>$value) {
+    if(!in_array($value, array('administrator', 'anonymous user', 'authenticated user')))
+      $role_options[$key] = $value;
+  }
+  $form['roles'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Specify Affected User Roles'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#weight' => 0,
+    'affected_roles' => array(
+      '#type' => 'select',
+      '#title' => t('User Roles'),
+      '#multiple' => TRUE,
+      '#options' => $role_options,
+      '#default_value' => variable_get('media_image_agents_affected_roles', array()),
+      '#weight' => 5,
+      '#required' => FALSE,
+      '#attributes' => array('class' => array('media-filter-select'))));
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#weight' => 5,
+    '#value' => t('Update Agent Filter'),
+    '#submit' => array('media_image_agents_settings_submit'),
+    '#prefix' => '<div>',
+    '#suffix' => '</div>'
+  );
+  return $form;
+}
+
+/**
+ * Enter description here ...
+ * @param $form
+ * @param $form_state
+ */
+function media_image_agents_settings_submit($form, &$form_state) {
+  // parse tags
+  $tags = array();
+  foreach(media_browser_plus_load_tag_terms($form_state['input']['field_tags']) as $index => $item) {
+    $tags[] = $item['tid'];
+  }
+  // parse folders
+  $folders = array();
+  if(count($form_state['input']['field_folder'])) {
+    foreach($form_state['input']['field_folder'] as $key=>$value){
+      $tid = $value;
+      $folders[$tid] = $tid;
+      //
+      if($form_state['input']['include_subfolders']){
+        $children = taxonomy_get_tree($vocabulary->vid, $tid);
+        //
+        foreach($children as $key=>$term){
+          $folders[$term->tid] = $term->tid;
+        }
+      }
+    }
+  }
+  // parse types
+  $types = count($form_state['input']['media_type']) > 0 ?
+    implode(",", $form_state['input']['media_type']) :
+    implode(",", array_keys(media_type_get_types()));
+  $new_roles = count($form_state['values']['affected_roles']) ?
+    array_values($form_state['values']['affected_roles']) :
+    array();
+  $old_roles = variable_get('media_image_agents_affected_roles');
+  // save permission settings
+  foreach($new_roles as $rid) {
+    _media_image_agents_affect_role($rid);
+  }
+  $diff = array_diff($old_roles, $new_roles);
+  if(count($diff)) {
+    foreach($diff as $rid) {
+      _media_image_agents_affect_role($rid, true);
+    }
+  }
+  // save both
+  variable_set('media_image_agents_include_subfolders', $form_state['input']['include_subfolders'] ? 1 : 0);
+  variable_set('media_image_agents_match_all_tags', $form_state['input']['match_all_tags'] ? 1 : 0);
+  variable_set('media_image_agents_field_folder', $folders);
+  variable_set('media_image_agents_media_types', $types);
+  variable_set('media_image_agents_field_tags', $tags);
+  variable_set('media_image_agents_affected_roles', $new_roles);
+  // set message
+  drupal_set_message('Settings updated successfully');
+}
+
+function _media_image_agents_affect_role($rid, $reverse = false) {
+  $role = user_role_load($rid);
+  if(!is_object($role))
+    return;
+  $permission = _media_image_agents_permissions();
+  // grant the permission to the role
+  if(!$reverse)
+    user_role_grant_permissions($role->rid, $permission);
+  else
+    user_role_revoke_permissions($role->rid, $permission);
+}
+
+/**
+ * Return the permissions of the role
+ */
+function _media_image_agents_permissions() {
+  return array(
+    'download media',
+    'filter media',
+    'access media backend',
+    'media grid view',
+    'preview media'
+  );
+}
+
+function _media_image_agents_restrict_user() {
+  global $user;
+  $uroles = array_keys($user->roles);
+  $sroles = count(variable_get('media_image_agents_field_affected_roles')) ?
+    array_values(variable_get('media_image_agents_field_affected_roles')) :
+    array();
+  return count(array_intersect($uroles, $sroles)) > 0;
+}
+?>

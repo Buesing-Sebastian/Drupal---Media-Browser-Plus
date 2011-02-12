@@ -1754,7 +1754,7 @@ function media_browser_plus_media_settings($form, &$form_state = array()) {
     'media_per_page' => array(
       '#type' => 'textfield',
       '#title' => 'Media Items per page',
-      '#description' => t('Insert a number higher than one for the amount of media items displayed per page'),
+      '#description' => t('Insert a number higher than one for the amount of media items displayed per page.'),
       '#default_value' => variable_get('media_media_per_page'),
       '#maxlength' => 4,
       '#required' => TRUE),
@@ -1762,15 +1762,22 @@ function media_browser_plus_media_settings($form, &$form_state = array()) {
       '#type' => 'textfield',
       '#title' => 'Grind Window Height',
       '#default_value' => variable_get('media_grid_window_height'),
-      '#description' => t('Set a maximum height of pixels for the media grid view'),
+      '#description' => t('Set a maximum height of pixels for the media grid view.'),
       '#maxlength' => 4,
       '#required' => TRUE),
     'page_items_per_page' => array(
       '#type' => 'textfield',
       '#title' => 'Page Items per page',
       '#default_value' => variable_get('media_page_items_per_page'),
-      '#description' => t('Set how many page items you want in the paging navigation of each page'),
+      '#description' => t('Set how many page items you want in the paging navigation of each page.'),
       '#maxlength' => 4,
+      '#required' => TRUE),
+    'max_filesize' => array(
+      '#type' => 'textfield',
+      '#title' => 'Upload Maximum Filesize',
+      '#default_value' => media_variable_get('max_filesize'),
+      '#description' => t('Standard unit is MB and therefore can be left out. Otherwise use "NUMBER UNIT"'),
+      '#maxlength' => 20,
       '#required' => TRUE)
   );
 
@@ -1785,6 +1792,7 @@ function media_browser_plus_media_settings_submit($form, &$form_state) {
   variable_set('media_media_per_page', (int)$form_state['values']['media_per_page']);
   variable_set('media_grid_window_height', (int)$form_state['values']['grid_window_height']);
   variable_set('media_page_items_per_page', (int)$form_state['values']['page_items_per_page']);
+  media_variable_set('max_filesize', trim($form_state['values']['max_filesize']));
   // notify user
   drupal_set_message(t('Media Browser Plus Settings changed successfully'));
   // go back to media overview
@@ -1795,13 +1803,16 @@ function media_browser_plus_media_settings_validate($form, &$form_state) {
   // validate settings
   $value = (int)$form_state['values']['media_per_page'];
   if($value <= 0)
-    form_set_error('Media Settings', t('Incorrect value for "Media Items per page"'));
+    form_set_error('Media Settings', t('Illegal value for "Media Items per page"'));
   $value = (int)$form_state['values']['grid_window_height'];
   if($value <= 100)
-    form_set_error('Media Settings', t('Incorrect value for "Grind Window Height"'));
+    form_set_error('Media Settings', t('Illegal value for "Grind Window Height"'));
   $value = (int)$form_state['values']['page_items_per_page'];
   if($value <= 2)
-    form_set_error('Media Settings', t('Incorrect value for "Page Items per page"'));
+    form_set_error('Media Settings', t('Illegal value for "Page Items per page"'));
+  $value = parse_size(trim($form_state['values']['max_filesize']));
+  if($value === 0)
+    form_set_error('Media Settings', t('Illegal value for "Upload Maximum Filesize"'));
 }
 
 /**
