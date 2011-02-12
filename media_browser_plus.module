@@ -6,6 +6,12 @@
  * Adds fields to the media browser forms for better UX
  */
 
+/* ***************************************** */
+/* INCLUDES                                  */
+/* ***************************************** */
+
+// A registry of variable_get defaults.
+require_once ( dirname(__FILE__) . '/includes/media_browser_plus.variables.inc');
 
 /**
  * Alter the media browser from to enable new UI
@@ -987,16 +993,37 @@ function media_browser_plus_permission() {
  * @param $entity
  */
 function media_browser_plus_file_download_access($field, $entity_type, $entity) {
+  // only check against media entities
   if($entity_type == 'media') {
-    foreach (module_implements('media_entity_access') as $module) {
-      $bool = module_invoke($module, 'media_entity_access', $entity);
-      if($bool === FALSE) {
-        return FALSE;
-      }
-    }
-    // return true if no module returned false
-    return TRUE;
+    // check for media admin AND return true if found
+    return media_browser_plus_media_access($entity);
   }
+}
+
+/**
+ * checks access to a given media entity
+ * @param $media_entity
+ */
+function media_browser_plus_media_access($media_entity) {
+  if(media_browser_plus_access('administer media'))
+    return true;
+  // start with ACCESS_DENY
+  $access = MEDIA_ENTITY_ACCESS_DENY;
+  // collect all modules implementing hook_media_entity_access
+  foreach (module_implements('media_entity_access') as $module) {
+    // and invoke the hook
+    $return = module_invoke($module, 'media_entity_access', $media_entity);
+    // if no ALLOW or DENY was returned we assume IGNORE and check the next
+    if($return != MEDIA_ENTITY_ACCESS_ALLOW && $return != MEDIA_ENTITY_ACCESS_DENY)
+      continue;
+    // if we have a DENY we can return a complete false here
+    if($return === MEDIA_ENTITY_ACCESS_DENY)
+      return false;
+    // otherwise it is an ALLOW and we save it
+    $access = MEDIA_ENTITY_ACCESS_ALLOW;
+  }
+  // check if we had one allow
+  return ($access === MEDIA_ENTITY_ACCESS_ALLOW);
 }
 
 /**

@@ -7,38 +7,54 @@
 function media_image_agents_media_entity_access($media_entity) {
   // if we have no agent we allow the access and let other modules deny it
   if(!_media_image_agents_restrict_user())
-    return true;
+    return MEDIA_ENTITY_ACCESS_IGNORE;
   // check every condition
-  if(!in_array($media_entity->field_folder[LANGUAGE_NONE][0]['tid'], array_values(variable_get('media_image_agents_field_folder')))) {
-    return false;
-  }
-  if(!in_array($media_entity->type, explode(",", variable_get('media_image_agents_media_types')))) {
-    return false;
-  }
-  // and tag setting
+  $field_folder_access = in_array($media_entity->field_folder[LANGUAGE_NONE][0]['tid'], array_values(variable_get('media_image_agents_field_folder')));
+  $media_type_access = in_array($media_entity->type, explode(",", variable_get('media_image_agents_media_types')));
+  // start with tag_access denied
+  $field_tag_access = false;
+  // get the required tags
   $required_tags = array_values(variable_get('media_image_agents_field_tags'));
+  // check if there are tags saved to be checked - otherwise we set tag_access true
   if(count($required_tags)) {
-    if((!isset($media_entity->field_tags[LANGUAGE_NONE]) || count($media_entity->field_tags[LANGUAGE_NONE]) == 0)
-      && count($required_tags) != 0) {
-      return false;
-    }
-    if(variable_get('media_image_agents_match_all_tags')) {
-      foreach($required_tags as $tag) {
-        $needle = array('tid' => $tag);
-        if(!in_array($needle, $media_entity->field_tags[LANGUAGE_NONE])) {
-          return false;
-        }
-      }
+    // if media item has no tags we set a DENY
+    if((!isset($media_entity->field_tags[LANGUAGE_NONE]) || count($media_entity->field_tags[LANGUAGE_NONE]) == 0)) {
+      $field_tag_access = false;
     } else {
-      $match = false;
-      foreach($required_tags as $tag) {
-        $needle = array('tid' => $tag);
-        if(in_array($needle, $media_entity->field_tags[LANGUAGE_NONE])) {
-          $match = true;
+      // otherwise we look if the media needs all the required tags or just one
+      // starting with all
+      if(variable_get('media_image_agents_match_all_tags')) {
+        // go through all required tags and look if the media item has it - start with a positive result
+        $field_tag_access = true;
+        foreach($required_tags as $tag) {
+          $needle = array('tid' => $tag);
+          // if tag not fould set $field_tag_access false and break loop
+          if(!in_array($needle, $media_entity->field_tags[LANGUAGE_NONE])) {
+            $field_tag_access = false;
+            break;
+          }
+        }
+      } else { // only one required
+        // start with false match here
+        $field_tag_access = false;
+        // and go through each one again
+        foreach($required_tags as $tag) {
+          $needle = array('tid' => $tag);
+          // if item found set $field_tag_access true and break loop
+          if(in_array($needle, $media_entity->field_tags[LANGUAGE_NONE])) {
+            $field_tag_access = true;
+          }
         }
       }
-      return $match;
     }
+  } else {
+    $field_tag_access = true;
+  }
+  // check all access conditions
+  if($field_folder_access && $field_tag_access && $media_type_access) {
+    return MEDIA_ENTITY_ACCESS_ALLOW;
+  } else {
+    return MEDIA_ENTITY_ACCESS_DENY;
   }
 }
 
