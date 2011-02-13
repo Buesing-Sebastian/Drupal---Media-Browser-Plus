@@ -5,9 +5,6 @@
  * @param unknown_type $entity
  */
 function media_image_agents_media_entity_access($media_entity) {
-  // if we have no agent we allow the access and let other modules deny it
-  if(!_media_image_agents_restrict_user())
-    return MEDIA_ENTITY_ACCESS_IGNORE;
   // check every condition
   $field_folder_access = in_array($media_entity->field_folder[LANGUAGE_NONE][0]['tid'], array_values(variable_get('media_image_agents_field_folder')));
   $media_type_access = in_array($media_entity->type, explode(",", variable_get('media_image_agents_media_types')));
@@ -50,11 +47,22 @@ function media_image_agents_media_entity_access($media_entity) {
   } else {
     $field_tag_access = true;
   }
+  // if we have no agent we deny the access to protect the media
+  if(_media_image_agents_restrict_user()) {
+    // check all access conditions
+    $case_match = MEDIA_ENTITY_ACCESS_ALLOW;
+    $case_no_match = MEDIA_ENTITY_ACCESS_DENY;
+  } else {
+    $case_match = MEDIA_ENTITY_ACCESS_DENY;
+    $case_no_match = MEDIA_ENTITY_ACCESS_IGNORE;
+  }
   // check all access conditions
   if($field_folder_access && $field_tag_access && $media_type_access) {
-    return MEDIA_ENTITY_ACCESS_ALLOW;
+    // return previously set ACCESS right for matching entities
+    return $case_match;
   } else {
-    return MEDIA_ENTITY_ACCESS_DENY;
+    // return previously set ACCESS right for non matching entities
+    return $case_no_match;
   }
 }
 

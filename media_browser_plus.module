@@ -1007,8 +1007,8 @@ function media_browser_plus_file_download_access($field, $entity_type, $entity) 
 function media_browser_plus_media_access($media_entity) {
   if(media_browser_plus_access('administer media'))
     return true;
-  // start with ACCESS_DENY
-  $access = MEDIA_ENTITY_ACCESS_DENY;
+  // start with ACCESS_ALLOW - by default media items are fully accessible
+  $access = MEDIA_ENTITY_ACCESS_ALLOW;
   // collect all modules implementing hook_media_entity_access
   foreach (module_implements('media_entity_access') as $module) {
     // and invoke the hook
