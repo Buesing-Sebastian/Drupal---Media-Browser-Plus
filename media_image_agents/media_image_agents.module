@@ -324,8 +324,8 @@ function _media_image_agents_permissions() {
 function _media_image_agents_restrict_user() {
   global $user;
   $uroles = array_keys($user->roles);
-  $sroles = count(variable_get('media_image_agents_field_affected_roles')) ?
-    array_values(variable_get('media_image_agents_field_affected_roles')) :
+  $sroles = count(variable_get('media_image_agents_affected_roles')) ?
+    array_values(variable_get('media_image_agents_affected_roles')) :
     array();
   return count(array_intersect($uroles, $sroles)) > 0;
 }
