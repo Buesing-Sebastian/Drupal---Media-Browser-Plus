@@ -22,22 +22,6 @@ function media_image_agents_install() {
 }
 
 /**
- * Add config menu
- */
-function media_image_agents_menu() {
-  $items['admin/config/media/media_image_agents_settings'] = array(
-    'title' => 'Media Image Agents Settings',
-    'description' => 'Change the settings for media image agents',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('media_image_agents_settings'),
-    'file' => 'media_image_agents.module',
-    'access callback' => 'user_access',
-    'access arguments' => array('administer media')
-  );
-  return $items;
-}
-
-/**
  * remove role
  */
 function media_image_agents_uninstall() {
