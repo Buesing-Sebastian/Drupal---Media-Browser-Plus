@@ -494,6 +494,115 @@ function media_browser_plus_form_media_add_upload_multiple_alter(&$form, &$form_
 /**
  * Implements hook_form_FORM_ID_alter().
  */
+function media_browser_plus_form_media_import_alter(&$form, &$form_state) {
+  $form['field_tags'] = _media_browser_plus_tag_form();
+  $form['field_folder'] = _media_browser_plus_folder_form();
+  // change submit
+  $form['submit']['#weight'] = 2;
+  $form['#submit'] = array('media_browser_plus_media_import_submit');
+}
+
+/**
+ * Changing the media import standard submit so we can use our own batch process
+ *
+ * @param $form
+ * @param $form_state
+ */
+function media_browser_plus_media_import_submit($form, &$form_state) {
+  if ($form_state['values']['op'] == 'Confirm') {
+    $files = $form_state['storage']['files'];
+    $batch = array(
+      'title' => t('Importing Media'),
+      'operations' => array(
+        array('media_browser_plus_media_import_batch_import_files', array($files, $form_state['values'])),
+      ),
+      'finished' => 'media_browser_plus_media_import_batch_complete',
+    );
+    if (!empty($form_state['values']['field_tags'])) {
+      // Create any new taxonomy terms.
+      foreach ($form_state['values']['field_tags'] as $i => &$item) {
+        if ($item['tid'] == 'autocreate') {
+          $term = (object) $item;
+          unset($term->tid);
+          taxonomy_term_save($term);
+          $item['tid'] = $term->tid;
+        }
+      }
+    }
+    batch_set($batch);
+    return;
+  }
+  $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * Batch process that only differs in the ability to apply the field values to the items
+ *
+ * @param $files
+ * @param $form_values
+ * @param $context
+ */
+function media_browser_plus_media_import_batch_import_files($files, $form_values, &$context) {
+  // split up attributes
+  //list($files, $form_values) = $attributes;
+  // need to repeat a lot of code here just to add the fields :-(
+  if (!isset($context['sandbox']['files'])) {
+    // This runs the first time the batch runs.
+    // This is stupid, but otherwise, I don't think it will work...
+    $context['results'] = array('success' => array(), 'errors' => array());
+    $context['sandbox']['max'] = count($files);
+    $context['sandbox']['files'] = $files;
+  }
+  $files =& $context['sandbox']['files'];
+
+  // Take a cut of files.  Let's do 10 at a time.
+  $length = (count($files) > media_variable_get('import_batch_size')) ? media_variable_get('import_batch_size') : count($files);
+  $to_process = array_splice($files, 0, $length);
+  $image_in_message = '';
+
+  foreach ($to_process as $file) {
+    try {
+      $file_obj = media_parse_to_file($file);
+      $context['results']['success'][] = $file;
+      if (!$image_in_message) {
+        $media = media_load($file_obj->fid);
+        $image_in_message = field_view_field('media', $media, 'file', 'media_preview');
+      }
+      // adding fields here
+      $media = media_load($file_obj->fid);
+      $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $form_values['field_folder'])));
+      $media->field_tags = array(LANGUAGE_NONE => $form_values['field_tags']);
+      media_save($media);
+    }
+    catch(Exception $e) {
+      $context['results']['errors'][] = $file . " Reason: " . $e->getMessage();
+    }
+  }
+
+  $context['message'] = "Importing " . theme('item_list', array('items' => $to_process));
+  $context['message'] .= drupal_render($image_in_message); // Just for kicks, show an image we are importing
+
+  $context['finished'] = ($context['sandbox']['max'] - count($files)) / $context['sandbox']['max'];
+}
+
+/**
+ * Same completed batch method as in media
+ *
+ * @param $success
+ * @param $results
+ * @param $operations
+ */
+function media_browser_plus_media_import_batch_complete($success, $results, $operations) {
+  if ($results['errors']) {
+    drupal_set_message(theme('item_list', array('items' => $results['errors'])), 'error');
+  }
+  if ($results['success']) {
+    drupal_set_message(theme('item_list', array('items' => $results['success'])));
+  }
+}
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
 function media_browser_plus_form_media_internet_add_alter(&$form, &$form_state) {
   // Add an additional form submission callback that fires after the default.
   media_browser_plus_form_media_add_upload_alter($form, $form_state);
@@ -556,7 +665,7 @@ function media_browser_plus_submit($form, &$form_state) {
   }
   // apply folder
   foreach ($media_entities as $media) {
-      $media->field_folder[LANGUAGE_NONE] = array(array('tid' => $form_state['values']['field_folder']));
+    $media->field_folder[LANGUAGE_NONE] = array(array('tid' => $form_state['values']['field_folder']));
   }
   // If the new media is from a 3rd party provider, and that provider also
   // provides MRSS data about the media, then populate the title and description
@@ -686,7 +795,7 @@ function _media_browser_plus_tag_form(){
     '#field_name' => 'field_tags',
     '#columns' => array('tid'),
     '#title' => 'Tags',
-    '#description' => 'Enter a comma-separated list of words to describe your image.',
+    '#description' => 'Enter a comma-separated list of words to describe your media.',
     '#required' => FALSE,
     '#delta' => 0,
     '#type' => 'textfield',
@@ -710,7 +819,7 @@ function _media_browser_plus_folder_form(){
       '#field_name' => 'field_tags',
       '#weigth' => -2,
       '#options' => $list,
-      '#description' => t('Select a folder this file should be put in')
+      '#description' => t('Select a folder for the media to be put in')
   );
 }
 function media_browser_plus_delete_multiple_form($form, &$form_state, $fids) {
