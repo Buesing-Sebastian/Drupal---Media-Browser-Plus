@@ -1,5 +1,5 @@
 <?php
-// $Id$ 
+// $Id$
 
 /**
  * @file
@@ -11,7 +11,7 @@
  */
 function media_browser_plus_install() {
   // Make sure the standard 'field_tags' field exists.
-  _media_browser_plus_ensure_field_tags();
+  // _media_browser_plus_ensure_field_tags();
   _media_browser_plus_ensure_field_folder();
 }
 
@@ -152,7 +152,7 @@ function media_browser_plus_enable(){
   if ($vocabulary) {
     $results = db_query('SELECT * FROM {taxonomy_term_data} ttd WHERE ttd.name = :name AND ttd.vid = :vocabulary',
       array('name' => 'Media Root', 'vocabulary' => $vocabulary->vid));
-    $term_id = null; 
+    $term_id = null;
     foreach($results as $result) {
       $term_id = $result->tid;
     }
