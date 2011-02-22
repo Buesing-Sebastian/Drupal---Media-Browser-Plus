@@ -100,20 +100,6 @@ function _media_browser_plus_ensure_field_folder() {
     $field['bundle'] = $bundle;
     _media_browser_plus_ensure_instance($field);
   }
-  $field = array(
-    'field_name' => 'field_description',
-    'label' => st('Description'),
-    'type' => 'text_long',
-    'entity_type' => 'media',
-    'bundle' => 'image',
-    'required' => FALSE
-  );
-  _media_browser_plus_ensure_field($field);
-  // ensure instance for each media bundle
-  foreach(array_keys(media_type_get_types()) as $bundle){
-    $field['bundle'] = $bundle;
-    _media_browser_plus_ensure_instance($field);
-  }
 }
 
 /**
@@ -147,38 +133,14 @@ function media_browser_plus_enable(){
   variable_set('media_media_per_page', 30);
   variable_set('media_grid_window_height', 400);
   variable_set('media_page_items_per_page', 10);
-  // add all media to default media folder
-  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
-  if ($vocabulary) {
-    $results = db_query('SELECT * FROM {taxonomy_term_data} ttd WHERE ttd.name = :name AND ttd.vid = :vocabulary',
-      array('name' => 'Media Root', 'vocabulary' => $vocabulary->vid));
-    $term_id = null;
-    foreach($results as $result) {
-      $term_id = $result->tid;
-    }
-    if(!$term_id) {
-      $media_root_term = new stdClass();
-      $media_root_term->name = 'Media Root';
-      $media_root_term->description = 'default media folder';
-      $media_root_term->vid = $vocabulary->vid;
-      $media_root_term->weight = '-10';
-      // save (default folder) term
-      taxonomy_term_save($media_root_term);
-      $results = db_query('SELECT * FROM {taxonomy_term_data} ttd WHERE ttd.name = :name AND ttd.vid = :vocabulary',
-      array('name' => 'Media Root', 'vocabulary' => $vocabulary->vid));
-      foreach($results as $result) {
-        $term_id = $result->tid;
-      }
-    }
-    if($term_id) {
-      // load all media and apply tid of folder if none set
-      $media_entities = media_browser_plus_load_multiple(array('paging' => false, 'apply_filter' => false));
-      foreach($media_entities->results as $media) {
-        if(!isset($media->field_folder[LANGUAGE_NONE])) {
-          $media->field_folder = array(LANGUAGE_NONE => array(array('tid' =>$term_id)));
-          echo $media->fid;
-          media_save($media);
-        }
+  $term = media_browser_plus_get_media_root_folder(true);
+  if(is_object($term)) {
+    // load all media and apply tid of folder if none set
+    $media_entities = media_browser_plus_load_multiple(array('paging' => false, 'apply_filter' => false));
+    foreach($media_entities->results as $media) {
+      if(!isset($media->field_folder[LANGUAGE_NONE])) {
+        $media->field_folder = array(LANGUAGE_NONE => array(array('tid' =>$term->tid)));
+        media_save($media);
       }
     }
   }
@@ -190,7 +152,6 @@ function media_browser_plus_enable(){
 function media_browser_plus_uninstall(){
   field_delete_field('field_folder');
   field_delete_field('field_tags');
-  field_delete_field('field_description');
   variable_del('media_media_per_page');
   variable_del('media_grid_window_height');
   variable_del('media_page_items_per_page');

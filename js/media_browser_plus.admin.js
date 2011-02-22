@@ -141,7 +141,7 @@
       // remove item from gallery
       item.addClass("movedImage");
       item.fadeOut();
-      if($('#media-thumb-list > li:not(.movedImage)').length - 1 == 0){
+      if($('#media-thumb-list > li:not(.movedImage)').length - 2 <= 0){
           var oldFolder = $('div.selectedFolder');
           oldFolder.addClass('emptyFolder');
           if(folder.parent().children(":first-child").hasClass("emptyParent")){
@@ -153,6 +153,14 @@
     },
     selectMediaItems : function (data) {
       $('div.selected', $('#media-thumb-list')).each(function(index){
+        // put single select check here to otherwise 
+        // you get a whole lot of alerts in some cases
+        if(!Drupal.settings.media_browser_plus.multiselect) {
+          if($('li', $('#media-basket-list')).html() != null) {
+            alert(Drupal.settings.media_browser_plus.messages.only_one_selection_allowed);
+            return false;
+          }
+        }
         // grab item
         var $media = $(this);
         Drupal.behaviors.media_browser_folders.selectMedia($media);
@@ -161,39 +169,37 @@
     selectMedia: function (data) {
       // check for double adding
       $media = $(data);
-      $item_dup = $('li[fid="' + $media.parent().attr('fid') +'"]', $('#media-basket-list'));
-      if($item_dup.html() == null) {
-        var item = '<li fid="' + $media.parent().attr('fid') + '">' + $media.parent().html() + '</li>';
-        item += '<input type="hidden" name="selected_media['+$media.parent().attr('fid')+']" value="1">';
-        $item = $(item);
-        $item.bind('click', function( event ) {
-          // grab item
-          $item_b = $('li[fid="'+$media.parent().attr('fid')+'"]', $('#media-basket-list'));
-          $item_b.remove();
-          return true;
-          });
-        $item.appendTo('#media-basket-list');
-      }
+      Drupal.behaviors.media_browser_folders.performMediaBasketSelection($media.parent());
     },
     dropSelectedMedia : function (event , ui) {
       $clone = $(ui.draggable);
       $media = $('li[fid="'+$clone.attr('fid')+'"]', $('#media-thumb-list'));
+      Drupal.behaviors.media_browser_folders.performMediaBasketSelection($media);
+      if(Drupal.settings.media_browser_plus.multiselect)
+        Drupal.behaviors.media_browser_folders.selectMediaItems();
+    },
+    performMediaBasketSelection : function ($media) {
       $id = $media.attr('fid');
+      // check if single-section mode is set
+      if(!Drupal.settings.media_browser_plus.multiselect) {
+        if($('li', $('#media-basket-list')).html() != null) {
+          alert(Drupal.settings.media_browser_plus.messages.only_one_selection_allowed);
+          return false;
+        }
+      }
       // check for double adding
       $item_dup = $('li[fid="'+$id+'"]', $('#media-basket-list'));
       if($item_dup.html() == null) {
         var item = '<li fid="' + $id + '">' + $media.html() + '</li>';
-        $item = $(item);
+        $item = $(item).clone();
+        $item.removeClass('selected');
         $('.media-item', $item).append('<input type="hidden" name="selected_media['+$id+']" value="1">');
         $item.bind('click', function( event ) {
-          // grab item
-          $item_b = $('li[fid="'+$id+'"]', $('#media-basket-list'));
-          $item_b.remove();
+          $(this).remove();
           return true;
           });
         $item.appendTo('#media-basket-list');
       }
-      Drupal.behaviors.media_browser_folders.selectMediaItems();
     },
     loadFolderContents: function ($item, $page) {
       // check against double loading of the same folder
