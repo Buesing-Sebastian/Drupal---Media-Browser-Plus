@@ -19,6 +19,21 @@ function media_image_agents_install() {
   $role = user_role_load_by_name('anonymous user');
   if(isset($role->rid))
     user_role_revoke_permissions($role->rid, array('view media'));
+  // add description field
+  $field = array(
+    'field_name' => 'field_description',
+    'label' => st('Description'),
+    'type' => 'text_long',
+    'entity_type' => 'media',
+    'bundle' => 'image',
+    'required' => FALSE
+  );
+  _media_browser_plus_ensure_field($field);
+  // ensure instance for each media bundle
+  foreach(array_keys(media_type_get_types()) as $bundle){
+    $field['bundle'] = $bundle;
+    _media_browser_plus_ensure_instance($field);
+  }
 }
 
 /**
@@ -38,4 +53,5 @@ function media_image_agents_uninstall() {
     }
   }
   variable_del('media_image_agents_affected_roles');
+  field_delete_field('field_description');
 }

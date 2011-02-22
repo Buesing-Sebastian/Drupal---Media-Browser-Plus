@@ -353,4 +353,5 @@ function _media_image_agents_restrict_user() {
     array();
   return count(array_intersect($uroles, $sroles)) > 0;
 }
+
 ?>
