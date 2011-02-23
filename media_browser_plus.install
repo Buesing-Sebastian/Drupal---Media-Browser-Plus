@@ -11,27 +11,32 @@
  */
 function media_browser_plus_install() {
   // Make sure the standard 'field_tags' field exists.
-  // _media_browser_plus_ensure_field_tags();
+  _media_browser_plus_ensure_field_tags();
   _media_browser_plus_ensure_field_folder();
 }
 
 /**
  * Make sure the field_tags field exists and is of the right type.
+ *
+ * DON'T CREATE TAGS VOCAB OR FIELD_TAGS - THIS IS DONE BY THE STANDARD INSTALL
+ * PROFILE WHICH IS CALLED AFTER THIS INSTALL. UNFORTUNATELY THE STANDARD
+ * INSTALL PROFILE DOESN'T CHECK IF THESE STUFF ALREADY EXISTS AND THROWS AN
+ * UNRECOVERABLE EXCEPTION THAT BREAKS THE WHOLE INSTALLATION.
  */
 function _media_browser_plus_ensure_field_tags() {
   // Make sure the 'tags' vocabulary exists.
   $vocabulary = taxonomy_vocabulary_machine_name_load('tags');
-  if (!$vocabulary) {
-    $description = st('Use tags to group articles on similar topics into categories.');
-    $help = st('Enter a comma-separated list of words to describe your content.');
-    $vocabulary = (object) array(
-      'name' => 'Tags',
-      'description' => $description,
-      'machine_name' => 'tags',
-      'help' => $help,
-    );
-    taxonomy_vocabulary_save($vocabulary);
-  }
+//  if (!$vocabulary) {
+//    $description = st('Use tags to group articles on similar topics into categories.');
+//    $help = st('Enter a comma-separated list of words to describe your content.');
+//    $vocabulary = (object) array(
+//      'name' => 'Tags',
+//      'description' => $description,
+//      'machine_name' => 'tags',
+//      'help' => $help,
+//    );
+//    taxonomy_vocabulary_save($vocabulary);
+//  }
 
   $field = array(
     'field_name' => 'field_tags',
@@ -50,7 +55,7 @@ function _media_browser_plus_ensure_field_tags() {
       ),
     ),
   );
-  _media_browser_plus_ensure_field($field);
+//  _media_browser_plus_ensure_field($field);
   // ensure instance for each media bundle
   foreach(array_keys(media_type_get_types()) as $bundle){
     $field['bundle'] = $bundle;
