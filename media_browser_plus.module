@@ -284,26 +284,9 @@ function media_browser_plus_thumbnailsJSON(){
     $folder = (int) (str_replace("folder_load_", "", $post));
     // create conditions
     $conditions = array();
-    if($folder != 0){
-      $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
-      $order = array(array("property" => array("timestamp", "DESC")));
-      $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, "order" => $order));
-    }
-    else{
-      // @TODO: Find a method for this, that works more efficiently
-      // (i.e. not having to load the whole media object to get the id)
-      // load first the ones which have been sorted
-      $conditions[] = array("field" => array("field_folder", "tid", array($folder), "NOT IN"));
-      $fakeHeader = array();
-      $variables = array('conditions' => $conditions, 'paging' => false, 'ids_only' => true, 'apply_filter' => false);
-      $ids = media_browser_plus_load_multiple($variables)->results;
-      // now load all except those already sorted
-      $conditions = array();
-      // skip next condition in case everything is unsorted
-      if(count($ids))
-        $conditions[] = array("property" => array("fid", array($ids), "NOT IN"));
-      $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, 'apply_filter' => false));
-    }
+    $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
+    $order = array(array("property" => array("fid", "DESC")));
+    $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, "order" => $order));
     $return = '';
     foreach($media_entities->results as $media){
       $return .= '<li fid="' . $media->fid . '">';
@@ -1582,6 +1565,7 @@ function media_browser_plus_library_browser($form, &$form_state, $multiselect, $
   }
   // adding grid view js and css
   $form['#attached']['js'][] = $path . '/js/media_browser_plus.admin.js';
+  $form['#attached']['js'][] = $path . '/js/media_browser_plus.library.js';
   drupal_add_library('system', 'ui.draggable');
   drupal_add_library('system', 'ui.droppable');
   // removing options form part
@@ -1720,7 +1704,8 @@ function media_browser_plus_grid_view_form($library_mode = false) {
 function media_browser_plus_main_view_javascript_settings() {
   // gather enviroment data
   $path = drupal_get_path('module', 'media_browser_plus');
-  $url = "http://" . $_SERVER['HTTP_HOST'] . base_path();
+  $host = "http://" . $_SERVER['HTTP_HOST'];
+  $url = $host . base_path();
   // create default settings
   $settings = array(
     'media_browser_plus' => array(
@@ -1730,7 +1715,7 @@ function media_browser_plus_main_view_javascript_settings() {
       'page' => isset($_GET['page']) ? $_GET['page'] : 0,
       'per_page' => variable_get('media_media_per_page'),
       'page_items_per_page' => variable_get('media_page_items_per_page'),
-      'browserUrl' => $url . "?q=media/browser&render=media-settings",
+      'folder_management_url' => $host . url('admin/content/media/folder_list'),
       'multiselect' => true,
   // texts
       'messages' => array(
