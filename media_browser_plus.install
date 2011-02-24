@@ -1,0 +1,158 @@
+<?php
+// $Id$ 
+
+/**
+ * @file
+ * Install file for media_browser_plus.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function media_browser_plus_install() {
+  // Make sure the standard 'field_tags' field exists.
+  _media_browser_plus_ensure_field_tags();
+  _media_browser_plus_ensure_field_folder();
+}
+
+/**
+ * Make sure the field_tags field exists and is of the right type.
+ */
+function _media_browser_plus_ensure_field_tags() {
+  // Make sure the 'tags' vocabulary exists.
+  $vocabulary = taxonomy_vocabulary_machine_name_load('tags');
+  if (!$vocabulary) {
+    $description = st('Use tags to group articles on similar topics into categories.');
+    $help = st('Enter a comma-separated list of words to describe your content.');
+    $vocabulary = (object) array(
+      'name' => 'Tags',
+      'description' => $description,
+      'machine_name' => 'tags',
+      'help' => $help,
+    );
+    taxonomy_vocabulary_save($vocabulary);
+  }
+
+  $field = array(
+    'field_name' => 'field_tags',
+    'type' => 'taxonomy_term_reference',
+    // Set cardinality to unlimited for tagging.
+    'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+    'entity_type' => 'media',
+    'label' => 'Tags',
+    'widget' => array('type' => 'taxonomy_autocomplete'),
+    'settings' => array(
+      'allowed_values' => array(
+        array(
+          'vocabulary' => $vocabulary->machine_name,
+          'parent' => 0,
+        ),
+      ),
+    ),
+  );
+  _media_browser_plus_ensure_field($field);
+  // ensure instance for each media bundle
+  foreach(array_keys(media_type_get_types()) as $bundle){
+    $field['bundle'] = $bundle;
+    _media_browser_plus_ensure_instance($field);
+  }
+}
+
+/**
+ * Make sure the field_tags field exists and is of the right type.
+ */
+function _media_browser_plus_ensure_field_folder() {
+  // Make sure the 'tags' vocabulary exists.
+  $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
+  if (!$vocabulary) {
+    $description = st('Use media folders to organize your media');
+    $help = st('Enter a concise name for the media folder');
+    $vocabulary = (object) array(
+      'name' => 'Media Folders',
+      'description' => $description,
+      'machine_name' => 'media_folders',
+      'hierarchy' => 1,
+      'help' => $help,
+    );
+    taxonomy_vocabulary_save($vocabulary);
+  }
+  $field = array(
+    'field_name' => 'field_folder',
+    'label' => st('Media Folder'),
+    'type' => 'taxonomy_term_reference',
+    // media file can only be in one folder at a time
+    'cardinality' => 1,
+    'entity_type' => 'media',
+    'bundle' => 'image',
+    'required' => TRUE,
+    'settings' => array(
+      'allowed_values' => array(
+        array(
+          'vocabulary' => $vocabulary->machine_name,
+          'parent' => 0,
+        ),
+      ),
+    ),
+  );
+  _media_browser_plus_ensure_field($field);
+  // ensure instance for each media bundle
+  foreach(array_keys(media_type_get_types()) as $bundle){
+    $field['bundle'] = $bundle;
+    _media_browser_plus_ensure_instance($field);
+  }
+}
+
+/**
+ * Create a field, unless it exists already.
+ *
+ * Note that it's not necessary to check field type here, as that's done in the
+ * requirements step.
+ *
+ * @param $field
+ *   The field definition.
+ */
+function _media_browser_plus_ensure_field($field) {
+  $existing_field = field_info_field($field['field_name']);
+  if (empty($existing_field)) {
+    field_create_field($field);
+  }
+}
+
+function _media_browser_plus_ensure_instance($instance) {
+  $existing_instance = field_info_instance($instance['entity_type'], $instance['field_name'], $instance['bundle']);
+  if (empty($existing_instance)) {
+    field_create_instance($instance);
+  }
+}
+
+/**
+ * @TODO: put files into default folders if not yet in any folder
+ */
+function media_browser_plus_enable(){
+  // save default settings
+  variable_set('media_media_per_page', 30);
+  variable_set('media_grid_window_height', 400);
+  variable_set('media_page_items_per_page', 10);
+  $term = media_browser_plus_get_media_root_folder(true);
+  if(is_object($term)) {
+    // load all media and apply tid of folder if none set
+    $media_entities = media_browser_plus_load_multiple(array('paging' => false, 'apply_filter' => false));
+    foreach($media_entities->results as $media) {
+      if(!isset($media->field_folder[LANGUAGE_NONE])) {
+        $media->field_folder = array(LANGUAGE_NONE => array(array('tid' =>$term->tid)));
+        media_save($media);
+      }
+    }
+  }
+}
+
+/**
+ * @TODO: discuss if this should be done
+ */
+function media_browser_plus_uninstall(){
+  field_delete_field('field_folder');
+  field_delete_field('field_tags');
+  variable_del('media_media_per_page');
+  variable_del('media_grid_window_height');
+  variable_del('media_page_items_per_page');
+}
