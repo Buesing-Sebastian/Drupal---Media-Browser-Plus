@@ -1498,10 +1498,10 @@ function media_browser_plus_get_media_root_folder($autocreate = false) {
  */
 function media_browser_plus_media_browser_plugin_info() {
   $plugins = array();
-  $plugins['library_plus'] = array(
+  /*$plugins['library_plus'] = array(
     '#weight' => 10,
     '#title' => t('Library Plus')
-  );
+  );*/
   return $plugins;
 }
 
