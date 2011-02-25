@@ -9,4 +9,3 @@ files[] = media_image_agents.install
 dependencies[] = user
 dependencies[] = media
 dependencies[] = media_browser_plus
-dependencies[] = taxonomy
