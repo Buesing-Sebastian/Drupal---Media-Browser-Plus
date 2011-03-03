@@ -287,6 +287,17 @@ function media_browser_plus_thumbnailsJSON(){
     $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
     $order = array(array("property" => array("fid", "DESC")));
     $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, "order" => $order));
+    module_load_include('inc', 'media', 'media.browser');
+    foreach($media_entities->results as $media){
+      media_browser_build_media_item($media);
+    }
+    $output = array(
+      'media' => array_values($media_entities->results),
+      'folder_loaded' => 'folder_load_'. $folder,
+      'overall_count' => $media_entities->overall_count
+    );
+    drupal_json_output($output);
+    /**
     $return = '';
     foreach($media_entities->results as $media){
       $return .= '<li fid="' . $media->fid . '">';
@@ -300,6 +311,7 @@ function media_browser_plus_thumbnailsJSON(){
     $return .= "<li id=\"folder_loaded\">folder_load_". $folder ."</li>";
     // replacing the false destination
     print str_replace("thumbnailsJSON", "thumbnails", $return);
+    **/
   }
 }
 
@@ -574,6 +586,10 @@ function media_browser_plus_preprocess_media_link(&$variables) {
 function media_browser_plus_preprocess_media_thumbnail(&$variables) {
   // See media_browser_plus_preprocess_media_link(). Same thing here, but for
   // the links that appear underneath thumbnail previews.
+  if(!isset($variables['element']['#object'])) {
+    var_dump($variables['element'][0]);
+    return;
+  }
   $media = $variables['element']['#object'];
   if (isset($media->media_title[LANGUAGE_NONE][0]['value'])) {
     $variables['element']['#name'] = $media->media_title[LANGUAGE_NONE][0]['value'];

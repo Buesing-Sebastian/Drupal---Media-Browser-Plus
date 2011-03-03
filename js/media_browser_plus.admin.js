@@ -4,6 +4,7 @@
       var gallery = $('#media-thumb-list');
       var selectedPreviewIndex = 0;
       var selectedPreviewItems = new Array();
+      Drupal.behaviors.media_browser_folders.loadedMedia = new Array();
       // Load active folder
       Drupal.behaviors.media_browser_folders.loadFolderContents($("div.folder_load:first"), 0);
       $("div.folder_load:first").addClass('selectedFolder');
@@ -128,7 +129,8 @@
       }
       var item = ui.draggable;
       // every image has an hidden input with its id inside its <li> tag
-      var id = item.attr('fid');
+      var id = item.attr('id');
+      id = id.slice(11, id.length);
       // remove the hover media over folder class
       folder.removeClass('dragOverDrop');
       folder.removeClass('emptyFolder');
@@ -173,13 +175,14 @@
     },
     dropSelectedMedia : function (event , ui) {
       $clone = $(ui.draggable);
-      $media = $('li[fid="'+$clone.attr('fid')+'"]', $('#media-thumb-list'));
+      $media = $('li[id="'+$clone.attr('id')+'"]', $('#media-thumb-list'));
       Drupal.behaviors.media_browser_folders.performMediaBasketSelection($media);
       if(Drupal.settings.media_browser_plus.multiselect)
         Drupal.behaviors.media_browser_folders.selectMediaItems();
     },
     performMediaBasketSelection : function ($media) {
-      $id = $media.attr('fid');
+      var id = $media.attr('id');
+      id = id.slice(11, id.length);
       // check if single-section mode is set
       if(!Drupal.settings.media_browser_plus.multiselect) {
         if($('li', $('#media-basket-list')).html() != null) {
@@ -188,12 +191,12 @@
         }
       }
       // check for double adding
-      $item_dup = $('li[fid="'+$id+'"]', $('#media-basket-list'));
+      $item_dup = $('li[id="basket-media-item-'+id+'"]', $('#media-basket-list'));
       if($item_dup.html() == null) {
-        var item = '<li fid="' + $id + '">' + $media.html() + '</li>';
+        var item = '<li id="basket-media-item-' + id + '">' + $media.html() + '</li>';
         $item = $(item).clone();
         $item.removeClass('selected');
-        $('.media-item', $item).append('<input type="hidden" name="selected_media['+$id+']" value="1">');
+        $('.media-item', $item).append('<input type="hidden" name="selected_media['+id+']" value="1">');
         $item.bind('click', function( event ) {
           $(this).remove();
           return true;
@@ -216,7 +219,7 @@
       $loading.appendTo('#media-thumb-list');
       // @TODO: add some kind of loading UI and failure handling here
       // and load in new ones
-      $.post(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/thumbnailsJSON", {folder: $item.attr('id'), page : $page}, Drupal.behaviors.media_browser_folders.folderContentsLoaded);
+      $.getJSON(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/thumbnailsJSON", {folder: $item.attr('id'), page : $page}, Drupal.behaviors.media_browser_folders.folderContentsLoaded);
       // redo the pages menu
       Drupal.settings.media_browser_plus.page = $page;
     },
@@ -235,21 +238,40 @@
       $('#media_browser_plus_pages').append($page_item);
     },
     folderContentsLoaded: function (data) {
-      var $results_count = 0;
-      var $overall_count = 0;
-      var $folder = "";
+      var results_count = data['media'].length;
+      var overall_count = data['overall_count'];
+      var folder = data['folder_loaded'];
+      var newMedia = data['media'];
+      Drupal.behaviors.media_browser_folders.loadedMedia = Drupal.behaviors.media_browser_folders.loadedMedia.concat(newMedia);
+      // remove loading indicator
       $('#loading_media').remove();
-      jQuery(data).each(function(index){
-      // grab item
-      var $item = $(this);
-      // append it to the gallery and do a fadein
-      if($item.attr('id') == 'result_count') {
-        $results_count = $item.html();
-      } else if($item.attr('id') == 'overall_count') {
-        $overall_count = $item.html();
-      } else if($item.attr('id') == 'folder_loaded') {
-        $folder = $("#" + $item.html());
-      } else {
+      jQuery(data['media']).each(function(index){
+        // grab item
+        var item = this;
+        // create checkbox for form actions
+        var checkbox = '<input class="form-checkbox hidden" id="edit-files-' + item.fid + '" name="files[' + item.fid + ']" value="1" type="checkbox">';
+        // append item
+        var listItem = $('<li></li>').appendTo('#media-thumb-list')
+          .attr('id', 'media-item-' + item.fid)
+          .html(checkbox + item.preview)
+          .bind('click', function( event ) {
+            // grab item
+            var media = $(this);
+            var input = $('input', media);
+            //
+            $('.media-item', media).toggleClass('selected');
+            input.attr('checked', input.attr('checked') == false);
+            return true;
+          });
+        $item = $(item);
+        listItem.draggable({
+          cancel: "a.ui-icon", // clicking an icon won't initiate dragging
+          revert: "invalid", // when not dropped, the item will revert back to its initial position
+          containment: "document", // stick to demo-frame if present
+          helper: "clone",
+          cursor: "move"
+        });
+      /*
         var $temp = $('.media-thumbnail', $item);
         var $link = $('a', $temp);
         var $label = $('.label-wrapper', $temp);
@@ -275,25 +297,25 @@
           helper: "clone",
           cursor: "move"
         });
-      }
+       */
       });
       // handle paging menu:
       $('#media_browser_plus_pages').html('');
-      var $pages = Math.ceil($overall_count / Drupal.settings.media_browser_plus.per_page);
+      var $pages = Math.ceil(overall_count / Drupal.settings.media_browser_plus.per_page);
       var $i = $pages;
       var $start = Math.max(0, Drupal.settings.media_browser_plus.page - Math.ceil(Drupal.settings.media_browser_plus.page_items_per_page / 2));
       var $end = Math.min($pages, $start + Drupal.settings.media_browser_plus.page_items_per_page);
       if($start > 0){
-        Drupal.behaviors.media_browser_folders.addPageItem($folder, $start-1, "...");
+        Drupal.behaviors.media_browser_folders.addPageItem(folder, $start-1, "...");
       }
       // create numbers
       if($pages > 1)
         for($i = $start; $i < $end; $i++){
-          Drupal.behaviors.media_browser_folders.addPageItem($folder, $i, $i + 1);
+          Drupal.behaviors.media_browser_folders.addPageItem(folder, $i, $i + 1);
         }
       // append one extra to show that there are more pages
       if($pages > $i){
-        Drupal.behaviors.media_browser_folders.addPageItem($folder, $i, "...");
+        Drupal.behaviors.media_browser_folders.addPageItem(folder, $i, "...");
       }
     },
     toggleSubfolders: function (event) {

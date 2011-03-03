@@ -3,11 +3,23 @@
     attach: function (context) {
       //
       $('#proceed_with_select').bind('click', function( event ) {
-        // @TODO: call Drupal media browser submit
-        alert("not yet implemented");
+        // getting selected media objects
+        $('#media-basket-list li').each(function (index) {
+          // grab id
+          var id = $(this).attr('id');
+          id = id.slice(18, id.length);
+          // find object
+          var media = Drupal.behaviors.media_browser_folders.loadedMedia;
+          for(var i = 0; i < media.length; i++) {
+            if(media[i].fid == id) {
+              Drupal.media.browser.selectMedia(media[i]);
+              break;
+            }
+          }
+        });
+        Drupal.media.browser.submit();
         return false;
       });
-      
     }
   };
 })(jQuery);
