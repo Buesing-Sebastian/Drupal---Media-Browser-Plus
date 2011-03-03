@@ -1677,7 +1677,8 @@ function media_browser_plus_grid_view_form($library_mode = false) {
   $form['buttons']['select_media'] = array(
     '#type' => 'button',
     '#attributes' => array('id' => 'media_buttons_select'),
-    '#value' => t('Add to Media Basket'));
+    '#value' => t('Add to Media Basket')
+  );
   $options = array(array(
     'categories' => array(
       'data' => drupal_render($form['admin']['folder'])),
