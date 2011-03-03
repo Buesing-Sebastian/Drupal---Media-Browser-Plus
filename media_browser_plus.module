@@ -1673,11 +1673,12 @@ function media_browser_plus_grid_view_form($library_mode = false) {
         '#validate' => array('media_browser_plus_media_admin_validate'),
         '#value' => t('Delete')
       );
-  }
+  }/*
   $form['buttons']['select_media'] = array(
     '#type' => 'button',
     '#attributes' => array('id' => 'media_buttons_select'),
-    '#value' => t('Add to Media Basket'));
+    '#value' => t('Add to Media Basket')
+  );*/
   $options = array(array(
     'categories' => array(
       'data' => drupal_render($form['admin']['folder'])),
@@ -1758,14 +1759,14 @@ function media_browser_plus_media_basket_form($library_mode = false) {
       '#type' => 'markup',
       '#markup' => '<a href="#media_basket_table" id="media_basket_remove_all" >' . t('Remove All') . '</a>'
     );
-  if($library_mode) {
+  if($library_mode) {/*
     $form['basket_actions']['select'] = array(
       '#type' => 'submit',
       '#value' => t('Continue with Media Basket Selection'),
       '#attributes' => array('id' => 'proceed_with_select'),
       '#limit_validation_errors' => array(),
       '#validate' => array('media_browser_plus_media_admin_validate')
-    );
+    );*/
   } else {
     if(media_access('download')) {
       $form['basket_actions']['download'] = array(

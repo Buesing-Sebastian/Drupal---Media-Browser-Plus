@@ -190,6 +190,14 @@
           return false;
         }
       }
+      // TEMP
+      var media = Drupal.behaviors.media_browser_folders.loadedMedia;
+      for(var i = 0; i < media.length; i++) {
+        if(media[i].fid == id) {
+          Drupal.media.browser.selectedMedia.push(media[i]);
+          break;
+        }
+      }
       // check for double adding
       $item_dup = $('li[id="basket-media-item-'+id+'"]', $('#media-basket-list'));
       if($item_dup.html() == null) {
@@ -271,33 +279,6 @@
           helper: "clone",
           cursor: "move"
         });
-      /*
-        var $temp = $('.media-thumbnail', $item);
-        var $link = $('a', $temp);
-        var $label = $('.label-wrapper', $temp);
-        $link.parent().html($link.html() + '<div class="label-wrapper">' + $label.html() + '</div>');
-        //alert($item.html());
-        //alert($temp.parent(':nth-child(1)'));
-        //$item.html($temp.parent(':nth-child(1)').html() + $temp.parent(':nth-child(2)').html());
-        $item.appendTo('#media-thumb-list');
-        // make it draggable
-        $('div.media-item', $item).bind('click', function( event ) {
-          // grab item
-          var $media = $(this);
-          var $input = $('input', $media.parent());
-          //
-          $media.toggleClass('selected');
-          $input.attr('checked', $input.attr('checked') == false);
-          return true;
-        });
-        $item.draggable({
-          cancel: "a.ui-icon", // clicking an icon won't initiate dragging
-          revert: "invalid", // when not dropped, the item will revert back to its initial position
-          containment: "document", // stick to demo-frame if present
-          helper: "clone",
-          cursor: "move"
-        });
-       */
       });
       // handle paging menu:
       $('#media_browser_plus_pages').html('');
