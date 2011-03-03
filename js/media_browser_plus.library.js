@@ -1,7 +1,7 @@
 (function ($) {
   Drupal.behaviors.media_browser_library = {
     attach: function (context) {
-      Drupal.media.browser.selectedMedia = [];
+      //Drupal.media.browser.selectedMedia = [];
       $('#proceed_with_select').bind('click', function( event ) {
         // getting selected media objects
         $('#media-basket-list li').each(function (index) {

@@ -190,14 +190,6 @@
           return false;
         }
       }
-      // TEMP
-      var media = Drupal.behaviors.media_browser_folders.loadedMedia;
-      for(var i = 0; i < media.length; i++) {
-        if(media[i].fid == id) {
-          Drupal.media.browser.selectedMedia.push(media[i]);
-          break;
-        }
-      }
       // check for double adding
       $item_dup = $('li[id="basket-media-item-'+id+'"]', $('#media-basket-list'));
       if($item_dup.html() == null) {
