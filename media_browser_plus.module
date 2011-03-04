@@ -40,7 +40,6 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   }
   // adding grid view js and css
   $form['#attached']['js'][] = $path . '/js/media_browser_plus.admin.js';
-  $form['#attached']['js'][] = $path . '/js/media_browser_plus.library.js';
   drupal_add_library('system', 'ui.draggable');
   drupal_add_library('system', 'ui.droppable');
   // removing options form part
@@ -279,11 +278,16 @@ function media_browser_plus_change_folder($form, &$form_state){
  * function called by the JS Fronted via AJAX Request to get the media list for a given folder
  */
 function media_browser_plus_thumbnailsJSON(){
-  if(isset($_POST['folder']) || isset($_GET['folder'])){
-    $post = isset($_POST['folder']) ? $_POST['folder'] : $_GET['folder'];
-    $folder = (int) (str_replace("folder_load_", "", $post));
+  if(isset($_GET['folder'])){
+    $folder = (int) (str_replace("folder_load_", "", $_GET['folder']));
     // create conditions
     $conditions = array();
+    // check for filter set by library
+    if(isset($_GET['filter'])) {
+      $filter = drupal_json_decode($_GET['filter']);
+      $conditions = $filter;
+    }
+    // more conditions
     $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
     $order = array(array("property" => array("fid", "DESC")));
     $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, "order" => $order));
@@ -297,21 +301,6 @@ function media_browser_plus_thumbnailsJSON(){
       'overall_count' => $media_entities->overall_count
     );
     drupal_json_output($output);
-    /**
-    $return = '';
-    foreach($media_entities->results as $media){
-      $return .= '<li fid="' . $media->fid . '">';
-      $return .= '<input class="form-checkbox hidden" id="edit-files-' . $media->fid . '" name="files[' . $media->fid . ']" value="1" type="checkbox">';
-      $return .= drupal_render(media_get_thumbnail_preview(media_load($media->fid), TRUE));
-      $return .= "</li>";
-    }
-    // append overall result count
-    $return .= "<li id=\"result_count\">". count($media_entities->results) ."</li>";
-    $return .= "<li id=\"overall_count\">". $media_entities->overall_count ."</li>";
-    $return .= "<li id=\"folder_loaded\">folder_load_". $folder ."</li>";
-    // replacing the false destination
-    print str_replace("thumbnailsJSON", "thumbnails", $return);
-    **/
   }
 }
 
@@ -1528,10 +1517,10 @@ function media_browser_plus_media_browser_plugin_info() {
  * @param $params
  */
 function media_browser_plus_media_browser_plugin_view($plugin_name, $params) {
-  $types = array();
+  $types = isset($params['types']) ? $params['types'] : array();
   $multiselect = isset($params['multiselect']) ? $params['multiselect'] : false;
   // get plugin form
-  $upload_form = drupal_get_form("media_browser_plus_library_browser", $multiselect, $types);
+  $upload_form = drupal_get_form('media_browser_plus_library_browser', $multiselect, $types);
   // return plugin
   return array(
     '#title' => t('Library Plus'),
@@ -1560,8 +1549,8 @@ function media_browser_plus_media_browser_plugins_alter(&$form, &$form_state) {
  * @param $multiselect
  * @param $types
  */
-function media_browser_plus_library_browser($form, &$form_state, $multiselect, $types = NULL) {
-  //
+function media_browser_plus_library_browser($form, &$form_state, $multiselect, $types) {
+  // assemble library from grid view
   $path = drupal_get_path('module', 'media_browser_plus');
   $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
   $form['#attached']['css'][] = $path . '/css/colorbox.css';
@@ -1569,7 +1558,11 @@ function media_browser_plus_library_browser($form, &$form_state, $multiselect, $
   // set base href for javascript requests
   $settings = media_browser_plus_main_view_javascript_settings();
   $settings['media_browser_plus']['multiselect'] = $multiselect;
-  //
+  $settings['media_browser_plus']['folder_dnd_enabled'] = false;
+  // setting filter condition
+  $filter = array(array("property" => array("type", $types, "IN")));
+  $settings['media_browser_plus']['filter'] = drupal_json_encode($filter);
+  // attach settings
   $form['#attached']['js'][] = array(
     'type' => 'setting',
     'data' => $settings,
@@ -1589,10 +1582,11 @@ function media_browser_plus_library_browser($form, &$form_state, $multiselect, $
   if(!media_browser_plus_access('media list view') ||
     !media_browser_plus_access('media grid view'))
     unset($form['switch']);
-  //
-  $form['admin'] = media_browser_plus_grid_view_form(true);
-  $form['media-basket'] = media_browser_plus_media_basket_form(true);
-  //
+  // add main grid view window
+  $form['admin'] = media_browser_plus_grid_view_form(true, $multiselect);
+  // append media basket only for multi select
+  if($multiselect)
+    $form['media-basket'] = media_browser_plus_media_basket_form(true);
   return $form;
 }
 
@@ -1615,7 +1609,7 @@ function media_browser_plus_file_delete($file) {
 /**
  * appends main grid view form
  */
-function media_browser_plus_grid_view_form($library_mode = false) {
+function media_browser_plus_grid_view_form($library_mode = false, $multiselect = false) {
   // load the media folders
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
   $folders = taxonomy_get_tree($vocabulary->vid);
@@ -1679,6 +1673,17 @@ function media_browser_plus_grid_view_form($library_mode = false) {
     '#attributes' => array('id' => 'media_buttons_select'),
     '#value' => t('Add to Media Basket')
   );
+  if($library_mode && !$multiselect) {
+    // remove select/deselect all
+    unset($form['buttons']['selection_assets']);
+    // change Add to media basket to process with selection
+    $form['buttons']['select_media'] = _media_browser_plus_media_basket_select_button();
+    // add fake-cancel 
+    /*
+    $form['buttons']['cancel_library'] = array(
+      '#markup' => '<a class="button fake-cancel">Cancel</a>'
+    );*/
+  }
   $options = array(array(
     'categories' => array(
       'data' => drupal_render($form['admin']['folder'])),
@@ -1692,14 +1697,18 @@ function media_browser_plus_grid_view_form($library_mode = false) {
       'media' => array(
         'data' => '',
         'id' => array('media_browser_plus_pages'))
-    ),array(
+    )
+  );
+  // if no library mode with single selection add media basket buttons
+  if(!$library_mode || $multiselect) {
+    $options[] = array(
       'categories' => array(
         'data' => ''),
       'media' => array(
         'data' => drupal_render($form['buttons']),
         'id' => array('media_browser_plus_selection_panel'))
-    )
-  );
+    );
+  }
   // table setup
   $table = array(
     'header' => $header,
@@ -1708,11 +1717,14 @@ function media_browser_plus_grid_view_form($library_mode = false) {
     'empty' => t('No media added yet.')
   );
   // return themed table
-  return array(
+  $output = array(
     '#type' => 'markup',
     '#markup' => theme('table', $table),
-    'buttons' => $form['buttons']
   );
+  if($library_mode && !$multiselect) {
+    $output['#markup'] .= drupal_render($form['buttons']);
+  }
+  return $output;
 }
 
 /**
@@ -1760,13 +1772,7 @@ function media_browser_plus_media_basket_form($library_mode = false) {
       '#markup' => '<a href="#media_basket_table" id="media_basket_remove_all" >' . t('Remove All') . '</a>'
     );
   if($library_mode) {
-    $form['basket_actions']['select'] = array(
-      '#type' => 'submit',
-      '#value' => t('Continue with Media Basket Selection'),
-      '#attributes' => array('id' => 'proceed_with_select'),
-      '#limit_validation_errors' => array(),
-      '#validate' => array('media_browser_plus_media_admin_validate')
-    );
+    $form['basket_actions']['select'] = _media_browser_plus_media_basket_select_button();
   } else {
     if(media_access('download')) {
       $form['basket_actions']['download'] = array(
@@ -1847,5 +1853,15 @@ function media_browser_plus_media_preview_form() {
     '#type' => 'markup',
     '#markup' => '<div id="media-preview-table-container" style="display: none;">' . theme('table', $table) . '</div>',
     'preview_actions' => $form['preview_actions']
+  );
+}
+
+function _media_browser_plus_media_basket_select_button() {
+  return array(
+    '#type' => 'submit',
+    '#value' => t('Continue with Selection'),
+    '#attributes' => array('id' => 'proceed_with_select'),
+    '#limit_validation_errors' => array(),
+    '#validate' => array('media_browser_plus_media_admin_validate')
   );
 }
