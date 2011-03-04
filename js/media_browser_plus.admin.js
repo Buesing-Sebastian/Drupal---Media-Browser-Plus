@@ -240,7 +240,7 @@
     folderContentsLoaded: function (data) {
       var results_count = data['media'].length;
       var overall_count = data['overall_count'];
-      var folder = data['folder_loaded'];
+      var folder = $('#'+data['folder_loaded']);
       var newMedia = data['media'];
       Drupal.behaviors.media_browser_folders.loadedMedia = Drupal.behaviors.media_browser_folders.loadedMedia.concat(newMedia);
       // remove loading indicator
