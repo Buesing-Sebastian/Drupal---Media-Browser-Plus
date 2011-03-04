@@ -60,10 +60,10 @@
         // reset selectionArray
         selectedPreviewItems = new Array();
         selectedPreviewIndex = 0;
-        $("div.selected", $('#media-thumb-list')).each(function(index) {
+        $("div.media-item.selected", $('#media-thumb-list')).each(function(index) {
           var $media = $(this);
           // check for double adding
-          selectedPreviewItems.push($media.parent().attr('fid'));
+          selectedPreviewItems.push(Drupal.behaviors.media_browser_folders.getId($media.parent().attr('id'), 11));
         });
         if(selectedPreviewItems.length > 0) {
           // open an empty colorbox to show activity
@@ -129,8 +129,7 @@
       }
       var item = ui.draggable;
       // every image has an hidden input with its id inside its <li> tag
-      var id = item.attr('id');
-      id = id.slice(11, id.length);
+      var id = Drupal.behaviors.media_browser_folders.getId(item.attr('id'), 11);
       // remove the hover media over folder class
       folder.removeClass('dragOverDrop');
       folder.removeClass('emptyFolder');
@@ -258,19 +257,24 @@
             // grab item
             var media = $(this);
             var input = $('input', media);
-            //
+            // toggle selection
             $('.media-item', media).toggleClass('selected');
             input.attr('checked', input.attr('checked') == false);
+            // check for single-selection
+            if(!Drupal.settings.media_browser_plus.multiselect) {
+              // and remove all other selections
+            }
             return true;
           });
         $item = $(item);
-        listItem.draggable({
-          cancel: "a.ui-icon", // clicking an icon won't initiate dragging
-          revert: "invalid", // when not dropped, the item will revert back to its initial position
-          containment: "document", // stick to demo-frame if present
-          helper: "clone",
-          cursor: "move"
-        });
+        if(Drupal.settings.media_browser_plus.multiselect || Drupal.settings.media_browser_plus.folder_dnd_enabled)
+          listItem.draggable({
+            cancel: "a.ui-icon", // clicking an icon won't initiate dragging
+            revert: "invalid", // when not dropped, the item will revert back to its initial position
+            containment: "document", // stick to demo-frame if present
+            helper: "clone",
+            cursor: "move"
+          });
       });
       // handle paging menu:
       $('#media_browser_plus_pages').html('');
@@ -330,6 +334,26 @@
     },
     reloadData: function (data) {
       window.location.reload();
+    },
+    getWindowSize: function () {
+      var myWidth = 0, myHeight = 0;
+      if( typeof( window.innerWidth ) == 'number' ) {
+        //Non-IE
+        myWidth = window.innerWidth;
+        myHeight = window.innerHeight;
+      } else if( document.documentElement && ( document.documentElement.clientWidth || document.documentElement.clientHeight ) ) {
+        //IE 6+ in 'standards compliant mode'
+        myWidth = document.documentElement.clientWidth;
+        myHeight = document.documentElement.clientHeight;
+      } else if( document.body && ( document.body.clientWidth || document.body.clientHeight ) ) {
+        //IE 4 compatible
+        myWidth = document.body.clientWidth;
+        myHeight = document.body.clientHeight;
+      }
+      return new Array(myWidth, myHeight);
+    },
+    getId : function (idString, idStart) {
+      return idString.slice(idStart, idString.length);
     }
   };
 })(jQuery);
