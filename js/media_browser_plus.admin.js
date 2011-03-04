@@ -53,7 +53,7 @@
           $media = $("div.selected:first", $('#media-thumb-list'));
           if($media.html() != null)
             window.open(Drupal.settings.media_browser_plus.url +
-              "?q=media/" + $media.parent().attr('fid') + "/view");
+              "?q=media/" +Drupal.behaviors.media_browser_folders.getId($media.parent().attr('id'), 11) + "/view");
           return false;
         });
       $('#media_buttons_preview').bind('click', function( event ) {
@@ -218,7 +218,8 @@
       $loading.appendTo('#media-thumb-list');
       // @TODO: add some kind of loading UI and failure handling here
       // and load in new ones
-      $.getJSON(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/thumbnailsJSON", {folder: $item.attr('id'), page : $page}, Drupal.behaviors.media_browser_folders.folderContentsLoaded);
+      $filter = Drupal.settings.media_browser_plus.filter;
+      $.getJSON(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/thumbnailsJSON", {folder: $item.attr('id'), page : $page, filter : $filter}, Drupal.behaviors.media_browser_folders.folderContentsLoaded);
       // redo the pages menu
       Drupal.settings.media_browser_plus.page = $page;
     },
@@ -308,8 +309,8 @@
         var myWidth = 0, myHeight = 0;
         if( typeof( window.innerWidth ) == 'number' ) {
           //Non-IE
-          myWidth = window.innerWidth;
-          myHeight = window.innerHeight;
+          myWidth = window.parent.innerWidth;
+          myHeight = window.parent.innerHeight;
         } else if( document.documentElement && ( document.documentElement.clientWidth || document.documentElement.clientHeight ) ) {
           //IE 6+ in 'standards compliant mode'
           myWidth = document.documentElement.clientWidth;

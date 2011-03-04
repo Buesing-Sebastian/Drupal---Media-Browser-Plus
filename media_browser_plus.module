@@ -278,11 +278,16 @@ function media_browser_plus_change_folder($form, &$form_state){
  * function called by the JS Fronted via AJAX Request to get the media list for a given folder
  */
 function media_browser_plus_thumbnailsJSON(){
-  if(isset($_POST['folder']) || isset($_GET['folder'])){
-    $post = isset($_POST['folder']) ? $_POST['folder'] : $_GET['folder'];
-    $folder = (int) (str_replace("folder_load_", "", $post));
+  if(isset($_GET['folder'])){
+    $folder = (int) (str_replace("folder_load_", "", $_GET['folder']));
     // create conditions
     $conditions = array();
+    // check for filter set by library
+    if(isset($_GET['filter'])) {
+      $filter = drupal_json_decode($_GET['filter']);
+      $conditions = $filter;
+    }
+    // more conditions
     $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
     $order = array(array("property" => array("fid", "DESC")));
     $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, "order" => $order));
@@ -296,21 +301,6 @@ function media_browser_plus_thumbnailsJSON(){
       'overall_count' => $media_entities->overall_count
     );
     drupal_json_output($output);
-    /**
-    $return = '';
-    foreach($media_entities->results as $media){
-      $return .= '<li fid="' . $media->fid . '">';
-      $return .= '<input class="form-checkbox hidden" id="edit-files-' . $media->fid . '" name="files[' . $media->fid . ']" value="1" type="checkbox">';
-      $return .= drupal_render(media_get_thumbnail_preview(media_load($media->fid), TRUE));
-      $return .= "</li>";
-    }
-    // append overall result count
-    $return .= "<li id=\"result_count\">". count($media_entities->results) ."</li>";
-    $return .= "<li id=\"overall_count\">". $media_entities->overall_count ."</li>";
-    $return .= "<li id=\"folder_loaded\">folder_load_". $folder ."</li>";
-    // replacing the false destination
-    print str_replace("thumbnailsJSON", "thumbnails", $return);
-    **/
   }
 }
 
@@ -1527,7 +1517,7 @@ function media_browser_plus_media_browser_plugin_info() {
  * @param $params
  */
 function media_browser_plus_media_browser_plugin_view($plugin_name, $params) {
-  $types = array();
+  $types = isset($params['types']) ? $params['types'] : array();
   $multiselect = isset($params['multiselect']) ? $params['multiselect'] : false;
   // get plugin form
   $upload_form = drupal_get_form('media_browser_plus_library_browser', $multiselect, $types);
@@ -1559,9 +1549,8 @@ function media_browser_plus_media_browser_plugins_alter(&$form, &$form_state) {
  * @param $multiselect
  * @param $types
  */
-function media_browser_plus_library_browser($form, &$form_state, $multiselect, $types = NULL) {
+function media_browser_plus_library_browser($form, &$form_state, $multiselect, $types) {
   // assemble library from grid view
-  $multiselect = false;
   $path = drupal_get_path('module', 'media_browser_plus');
   $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
   $form['#attached']['css'][] = $path . '/css/colorbox.css';
@@ -1570,7 +1559,10 @@ function media_browser_plus_library_browser($form, &$form_state, $multiselect, $
   $settings = media_browser_plus_main_view_javascript_settings();
   $settings['media_browser_plus']['multiselect'] = $multiselect;
   $settings['media_browser_plus']['folder_dnd_enabled'] = false;
-  //
+  // setting filter condition
+  $filter = array(array("property" => array("type", $types, "IN")));
+  $settings['media_browser_plus']['filter'] = drupal_json_encode($filter);
+  // attach settings
   $form['#attached']['js'][] = array(
     'type' => 'setting',
     'data' => $settings,
@@ -1595,7 +1587,6 @@ function media_browser_plus_library_browser($form, &$form_state, $multiselect, $
   // append media basket only for multi select
   if($multiselect)
     $form['media-basket'] = media_browser_plus_media_basket_form(true);
-  //
   return $form;
 }
 

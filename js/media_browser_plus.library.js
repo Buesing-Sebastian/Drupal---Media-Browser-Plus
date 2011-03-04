@@ -23,9 +23,14 @@
         return false;
       });
       // resize the media browser
-      $('#media-browser-page-wrapper');
-      var size = Drupal.behaviors.media_browser_folders.getWindowSize();
-      alert(size[0]);
+      if(typeof (parent.frames[0].innerWidth) == 'number'){
+        width = parent.frames[0].innerWidth - 50;
+        $('#mediaBrowser', top.document).css('width', width+'px');
+        $('.ui-dialog.media-wrapper', top.document).css('top', '25px');
+        $('.ui-dialog.media-wrapper', top.document).css('left', '50px');
+        $('#mediaBrowser', top.document).attr('width', width);
+        $('.ui-dialog.media-wrapper', top.document).css('width', (width+10)+'px');
+      }
     },
     selectMedia : function (id) {
       var media = Drupal.behaviors.media_browser_folders.loadedMedia;
