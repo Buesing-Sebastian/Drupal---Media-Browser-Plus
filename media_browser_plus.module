@@ -55,7 +55,7 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
     $form['media-preview'] = media_browser_plus_media_preview_form();
   }
   //$form['#validate'] = array('media_browser_plus_media_admin_validate');
-//  print_r($form);
+  //print_r($form);
   return $form;
 }
 
@@ -626,7 +626,8 @@ function media_browser_plus_edit_cancel($form, &$form_state) {
     $destination = drupal_get_destination();
     unset($_GET['destination']);
   }
-  $form_state['redirect'] = $destination['destination'];
+  if(isset($destination['destination']))
+    $form_state['redirect'] = $destination['destination'];
 }
 
 /**
@@ -1535,10 +1536,13 @@ function media_browser_plus_media_browser_plugin_view($plugin_name, $params) {
  * @param $form_state
  */
 function media_browser_plus_media_browser_plugins_alter(&$form, &$form_state) {
-  // @TODO: uncomment this once new library can fully replace the exiting one
+  // @TODO: find a better way to keep the library_plus from popping up only when
+  // the old library would without editing media module if possible
+  if(!isset($form['library']))
+    unset($form['library_plus']);
   // remove old library
-  //if(isset($form['library']))
-    //unset($form['library']);
+  if(isset($form['library']))
+    unset($form['library']);
 }
 
 /**
@@ -1678,11 +1682,6 @@ function media_browser_plus_grid_view_form($library_mode = false, $multiselect =
     unset($form['buttons']['selection_assets']);
     // change Add to media basket to process with selection
     $form['buttons']['select_media'] = _media_browser_plus_media_basket_select_button();
-    // add fake-cancel 
-    /*
-    $form['buttons']['cancel_library'] = array(
-      '#markup' => '<a class="button fake-cancel">Cancel</a>'
-    );*/
   }
   $options = array(array(
     'categories' => array(
@@ -1720,6 +1719,7 @@ function media_browser_plus_grid_view_form($library_mode = false, $multiselect =
   $output = array(
     '#type' => 'markup',
     '#markup' => theme('table', $table),
+    'buttons' => $form['buttons']
   );
   if($library_mode && !$multiselect) {
     $output['#markup'] .= drupal_render($form['buttons']);
