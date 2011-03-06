@@ -23,11 +23,13 @@
         return false;
       });
       // resize the media browser
-      if(typeof (parent.frames[0].innerWidth) == 'number'){
-        width = parent.frames[0].innerWidth - 50;
+      if(typeof (parent.document.documentElement.clientWidth) == 'number'){
+        width = parent.document.documentElement.clientWidth - 100;
+        scrollTop = parent.window.pageYOffset;
+        scrollLeft = parent.window.pageXOffset;
         $('#mediaBrowser', top.document).css('width', width+'px');
-        $('.ui-dialog.media-wrapper', top.document).css('top', '25px');
-        $('.ui-dialog.media-wrapper', top.document).css('left', '50px');
+        $('.ui-dialog.media-wrapper', top.document).css('top', (scrollTop+25)+'px');
+        $('.ui-dialog.media-wrapper', top.document).css('left', (scrollLeft+50)+'px');
         $('#mediaBrowser', top.document).attr('width', width);
         $('.ui-dialog.media-wrapper', top.document).css('width', (width+10)+'px');
       }
