@@ -237,6 +237,16 @@ function media_browser_plus_media_filter(){
     if($access)
       $media_types[$value] = $type->label;
   }
+  $close = isset($_SESSION['media-filter-autoclose']) ?
+    (int)$_SESSION['media-filter-autoclose'] : 0;
+  $settings['media_browser_plus'] = array('autoclose' => $close);
+  // reset otherwise it always auto closes
+  unset($_SESSION['media-filter-autoclose']);
+  // attach settings
+  $form['#attached']['js'][] = array(
+    'type' => 'setting',
+    'data' => $settings,
+  );
   $form['filter'] = array(
     '#type' => 'fieldset',
     '#title' => isset($_SESSION['media-filter']) ? t('Show only items where') : t('Create Filter'),
@@ -272,7 +282,15 @@ function media_browser_plus_media_filter(){
         '#language' => LANGUAGE_NONE,
         '#type' => 'textfield',
         '#autocomplete_path' => 'taxonomy/autocomplete/field_tags',
-        '#element_validate' => array('media_browser_plus_prepare_taxonomy_autocomplete_validate', 'taxonomy_autocomplete_validate'))),
+        '#element_validate' => array('media_browser_plus_prepare_taxonomy_autocomplete_validate', 'taxonomy_autocomplete_validate')),
+      'prevent_autoclose' => array(
+        '#type' => 'checkbox',
+        '#weight' => 10,
+        '#attributes' => array('id' => array('media-filter-autoclose')),
+        '#title' => t('prevent window from closing after form submit'),
+        '#default_value' => (isset($_SESSION['media-filter']['prevent_autoclose']) ?
+                     (int)$_SESSION['media-filter']['prevent_autoclose'] : 0))
+    ),
     'column_two' => array(
       '#type' => 'container',
       '#prefix' => '<div style="float:left; padding-right: 20px;">',
@@ -332,7 +350,7 @@ function media_browser_plus_media_filter(){
         '#value' => t('Reset Filter'),
         '#submit' => array('media_browser_plus_media_filter_clear'),
         '#limit_validation_errors' => array(),
-        '#validate' => array('media_browser_plus_media_filter_clear_validate'),
+        '#validate' => array('media_browser_plus_media_filter_validate'),
         '#prefix' => '<div>',
         '#suffix' => '</div>'
     );
@@ -404,6 +422,8 @@ function media_browser_plus_media_filter_submit($form, &$form_state) {
  */
 function media_browser_plus_media_filter_validate($form, &$form_state) {
   // @todo: implement filter minimum check
+  // set auto close
+  $_SESSION['media-filter-autoclose'] = (int)$form_state['input']['prevent_autoclose'] == 1 ? 0 : 1;
 }
 
 /**
@@ -417,15 +437,5 @@ function media_browser_plus_media_filter_clear($form, &$form_state) {
   unset($_SESSION['media-filter']);
   // go back to media overview
   //$form_state['redirect'] = array('admin/content/media');
-}
-
-/**
- * Clears the filter form
- *
- * @param unknown_type $form
- * @param unknown_type $form_state
- */
-function media_browser_plus_media_filter_clear_validate($form, &$form_state) {
-  // @todo: implement filter minimum check
 }
 ?>

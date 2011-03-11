@@ -136,13 +136,16 @@ function media_browser_plus_enable(){
   $term = media_browser_plus_get_media_root_folder(true);
   if(is_object($term)) {
     // load all media and apply tid of folder if none set
-    $media_entities = media_browser_plus_load_multiple(array('paging' => false, 'apply_filter' => false));
-    foreach($media_entities->results as $media) {
-      if(!isset($media->field_folder[LANGUAGE_NONE])) {
-        $media->field_folder = array(LANGUAGE_NONE => array(array('tid' =>$term->tid)));
-        media_save($media);
-      }
-    }
+    variable_set('media_folder_import_start', 0);
+    $batch = array(
+      'title' => t('Assigning Media to Root Folder'),
+      'operations' => array(
+        array('media_browser_plus_folder_media_import', array($term->tid)),
+      ),
+      'finished' => 'media_browser_plus_folder_media_import_finished',
+      'file' => drupal_get_path('module', 'media_browser_plus') . '/media_browser_plus.admin.inc',
+    );
+    batch_set($batch);
   }
 }
 

@@ -8,6 +8,7 @@ files[] = media_browser_plus.module
 files[] = media_browser_plus.install
 files[] = media_browser_plus.folders.inc
 files[] = media_browser_plus.pages.inc
+files[] = media_browser_plus.admin.inc
 dependencies[] = media
 dependencies[] = taxonomy
 dependencies[] = multiform

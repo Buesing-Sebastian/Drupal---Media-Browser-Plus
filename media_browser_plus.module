@@ -54,8 +54,6 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   if(media_access('preview')) {
     $form['media-preview'] = media_browser_plus_media_preview_form();
   }
-  //$form['#validate'] = array('media_browser_plus_media_admin_validate');
-  //print_r($form);
   return $form;
 }
 
@@ -1101,9 +1099,11 @@ function media_browser_plus_load_multiple($variables){
     "conditions" => array(),
     "order" => array(),
     "header" => array(),
+    "page" => -1,
     "per_page" => variable_get('media_media_per_page'),
     "paging" => true,
     "ids_only" => false,
+    "count_only" => false,
     "apply_filter" => true);
   // override defaults
   foreach($variables as $key=>$value){
@@ -1185,7 +1185,7 @@ function media_browser_plus_load_multiple($variables){
   }
   // prepare result object
   $res_object = new StdClass();
-  if($params['paging']){
+  if($params['paging'] && !$params['count_only']){
     // doing a seperate count query here, because including the internal pager
     // doesn't work but seems the only way to get a total result count
     $count = clone $query;
@@ -1193,12 +1193,20 @@ function media_browser_plus_load_multiple($variables){
     $count->execute();
     $res_object->overall_count = $count->pager['total'];
     // using range here, because as said above the internal pager seems to be bugged
-    $page = isset($_GET['page']) ? $_GET['page'] : (isset($_POST['page']) ? $_POST['page'] : 0);
+    $page = $params['page'];
+    if($page == -1)
+      $page = isset($_GET['page']) ? $_GET['page'] : (isset($_POST['page']) ? $_POST['page'] : 0);
     $query->range($page * $params['per_page'], $params['per_page']);
     // adding the addition result fields
     $res_object->page = $page;
     $res_object->pages = ceil($res_object->overall_count / variable_get('media_media_per_page'));;
     $res_object->per_page = $params['per_page'];
+  }
+  // count only query
+  if($params['count_only']) {
+    $query->pager();
+    $query->execute();
+    return $query->pager['total'];
   }
   $res_object->results = array();
   // execute query and load results
@@ -1364,6 +1372,12 @@ function media_browser_plus_media_settings_submit($form, &$form_state) {
   $form_state['redirect'] = array('admin/config');
 }
 
+/**
+ * Validates the settings
+ *
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ */
 function media_browser_plus_media_settings_validate($form, &$form_state) {
   // validate settings
   $value = (int)$form_state['values']['media_per_page'];
