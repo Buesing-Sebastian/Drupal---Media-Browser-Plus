@@ -140,7 +140,7 @@ function media_browser_plus_enable(){
     $batch = array(
       'title' => t('Assigning Media to Root Folder'),
       'operations' => array(
-        array('media_browser_plus_folder_media_import', array()),
+        array('media_browser_plus_folder_media_import', array($term->tid)),
       ),
       'finished' => 'media_browser_plus_folder_media_import_finished',
       'file' => drupal_get_path('module', 'media_browser_plus') . '/media_browser_plus.admin.inc',
