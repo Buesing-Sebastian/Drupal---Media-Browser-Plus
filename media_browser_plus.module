@@ -108,6 +108,8 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
     $conditions[] = array("property" => array("fid", array($ids), "IN"));
     $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, 'apply_filter' => false, 'paging' => false));
     // create archive
+    apache_setenv('no-gzip', '1');
+    //
     $name = 'media-download-' . md5(microtime() . uniqid());
     $zipFile = '/tmp/'.$name.'.zip';
     $zip = new ZipArchive;
@@ -117,12 +119,23 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
         $zip->addFile(drupal_realpath($media->uri), $media->filename);
       }
       $zip->close();
+      /** OLD 
       header("Content-type: application/zip");
       header("Content-Disposition: attachment; filename=$zipFile");
       header("Content-Length: " . filesize($zipFile));
       header("Pragma: no-cache");
       header("Expires: 0");
-      apache_setenv('no-gzip', '1');
+      **/
+      header("Cache-Control: public");
+      header("Pragma: public");
+      header("Expires: 0");
+      header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+      header("Cache-Control: public");
+      //header("Content-Description: File Transfer");
+      //header("Content-type: application/zip");
+      header("Content-Disposition: attachment; filename=$zipFile");
+      //header("Content-Transfer-Encoding: binary");
+      header("Content-length: " . filesize($zipFile)); 
       readfile($zipFile);
       unlink($zipFile);
       die();
