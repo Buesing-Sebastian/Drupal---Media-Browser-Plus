@@ -119,8 +119,10 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
       $zip->close();
       header("Content-type: application/zip");
       header("Content-Disposition: attachment; filename=$zipFile");
+      header("Content-Length: " . filesize($zipFile));
       header("Pragma: no-cache");
       header("Expires: 0");
+      apache_setenv('no-gzip', '1');
       readfile($zipFile);
       unlink($zipFile);
       die();
