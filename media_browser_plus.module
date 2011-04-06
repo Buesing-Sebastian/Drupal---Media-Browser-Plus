@@ -119,7 +119,7 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
         $zip->addFile(drupal_realpath($media->uri), $media->filename);
       }
       $zip->close();
-      /** OLD 
+      /** OLD
       header("Content-type: application/zip");
       header("Content-Disposition: attachment; filename=$zipFile");
       header("Content-Length: " . filesize($zipFile));
@@ -135,7 +135,7 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
       //header("Content-type: application/zip");
       header("Content-Disposition: attachment; filename=$zipFile");
       //header("Content-Transfer-Encoding: binary");
-      header("Content-length: " . filesize($zipFile)); 
+      header("Content-length: " . filesize($zipFile));
       readfile($zipFile);
       unlink($zipFile);
       die();
@@ -1760,10 +1760,11 @@ function media_browser_plus_grid_view_form($library_mode = false, $multiselect =
  * returns default javascript settings
  */
 function media_browser_plus_main_view_javascript_settings() {
+  global $base_url;
   // gather enviroment data
   $path = drupal_get_path('module', 'media_browser_plus');
   $host = "http://" . $_SERVER['HTTP_HOST'];
-  $url = $host . base_path();
+  $url = $base_url . base_path();
   // create default settings
   $settings = array(
     'media_browser_plus' => array(
