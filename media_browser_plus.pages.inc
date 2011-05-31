@@ -1,15 +1,12 @@
 <?php
-// $Id$
-
 /**
  * @file
  * Common pages for the media browser plus module.
  */
 
-
 /**
- * Enter description here ...
- * @param $fids
+ * Create a form to edit multiple fiel entities.
+ * @param $fids Array with file id's.
  */
 function media_browser_plus_edit_multiple_form($fids) {
   // load media
@@ -39,7 +36,7 @@ function media_browser_plus_edit_multiple_form($fids) {
 }
 
 /**
- * Enter description here ...
+ * Provide a form to confirm the deletion of multiple file entites.
  *
  * @param $form
  * @param $form_state
@@ -57,7 +54,7 @@ function media_browser_plus_delete_multiple_form($form, &$form_state, $fids) {
 }
 
 /**
- * Enter description here ...
+ * Provide a preview matching to the available resolution of the screen.
  *
  * @param $form
  * @param $form_state
@@ -99,7 +96,7 @@ function media_browser_plus_media_preview($form, &$form_state, $media) {
 }
 
 /**
- * Enter description here ...
+ * Simply redirect the user to the thumbnailview.
  * @param $form
  * @param $form_state
  */
@@ -359,4 +356,3 @@ function media_browser_plus_media_filter_clear($form, &$form_state) {
   // go back to media overview
   //$form_state['redirect'] = array('admin/content/media');
 }
-?>

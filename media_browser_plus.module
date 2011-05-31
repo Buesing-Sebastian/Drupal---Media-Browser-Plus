@@ -1,6 +1,4 @@
 <?php
-// $Id$
-
 /**
  * @file
  * Adds fields to the media browser forms for better UX

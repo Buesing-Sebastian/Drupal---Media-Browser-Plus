@@ -1,6 +1,4 @@
 <?php
-// $Id$
-
 /**
  * Enter description here ...
  * @param $form
@@ -333,6 +331,6 @@ function media_browser_plus_folder_theme_folder_weight_column($weight, $folder_i
   $output .= "</select></div>";
   $output .= "<input type=\"hidden\" id=\"edit-folder_id".$folder_id."-pid\" class=\"folder-pid\" value=\"".$pid."\" name=\"folder_id:".$folder_id."[pid]\" />";
   $output .= "<input type=\"hidden\" id=\"edit-folder_id".$folder_id."-folder_id\" class=\"folder-folder_id\" value=\"".$folder_id."\" name=\"folder_id:".$folder_id."[folder_id]\" />";
-  // add return 
+  // add return
   return $output;
 }
