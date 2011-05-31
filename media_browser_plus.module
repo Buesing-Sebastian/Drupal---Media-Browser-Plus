@@ -17,12 +17,10 @@ require_once ( dirname(__FILE__) . '/includes/media_browser_plus.variables.inc')
  * Alter the media browser from to enable new UI
  */
 function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
-  // add css for both views
   $path = drupal_get_path('module', 'media_browser_plus');
-  $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
-  $form['#attached']['css'][] = $path . '/css/colorbox.css';
-  $form['#attached']['js'][] = $path . '/js/media_browser_plus.admin.menu.js';
-  $form['#attached']['js'][] = $path . '/js/colorbox/jquery.colorbox-min.js';
+
+  // add css for both views
+  $form['#attached']['library'][] = array('media_browser_plus', 'colorbox');
   // set base href for javascript requests
   $settings = media_browser_plus_main_view_javascript_settings();
   //
@@ -838,6 +836,48 @@ function media_browser_plus_permission() {
 }
 
 /**
+ * Implements hook_library().
+ */
+function media_browser_plus_library() {
+  $library_path = variable_get('media_browser_plus_library_path', 'sites/all/libraries');
+  $stylesheet = variable_get('media_browser_plus_stylesheet', 'example1');
+  $libraries['colorbox'] = array(
+    'title' => 'Colorbox',
+    'website' => 'http://colorpowered.com/colorbox/',
+    'version' => '1.3.9',
+    'js' => array(
+      $library_path . '/colorbox/colorbox/jquery.colorbox-min.js' => array(),
+    ),
+    'css' => array(
+      $library_path . '/colorbox/' . $stylesheet . '/colorbox.css' => array(
+        'type' => 'file',
+        'media' => 'screen',
+      ),
+    ),
+  );
+
+  $path = drupal_get_path('module', 'media_browser_plus');
+  $libraries['media_browser_plus'] =  array(
+    'title' => 'Media Browser Plus',
+    'js' => array(
+      $path . '/js/media_browser_plus.admin.menu.js' => array(),
+    ),
+    'css' => array(
+      $path . '/css/media_browser_plus.admin.css' => array(
+        'type' => 'file',
+        'media' => 'screen',
+      ),
+      $path . '/css/colorbox.css' => array(
+        'type' => 'file',
+        'media' => 'screen',
+      ),
+    ),
+  );
+
+  return $libraries;
+}
+
+/**
  * Enter description here ...
  * @param $field
  * @param $entity_type
@@ -1586,11 +1626,11 @@ function media_browser_plus_media_browser_plugins_alter(&$form, &$form_state) {
  * @param $types
  */
 function media_browser_plus_library_browser($form, &$form_state, $multiselect, $types) {
-  // assemble library from grid view
   $path = drupal_get_path('module', 'media_browser_plus');
-  $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
-  $form['#attached']['css'][] = $path . '/css/colorbox.css';
-  $form['#attached']['js'][] = $path . '/js/colorbox/jquery.colorbox-min.js';
+
+  // assemble library from grid view
+  $form['#attached']['library'][] = array('media_browser_plus', 'colorbox');
+
   // set base href for javascript requests
   $settings = media_browser_plus_main_view_javascript_settings();
   $settings['media_browser_plus']['multiselect'] = $multiselect;
