@@ -222,3 +222,7 @@ ul#navlist {
 #media_browser_plus_preview_panel {
   text-align: center;
 }
+
+#mediaBrowser {
+  width: 90%;
+}

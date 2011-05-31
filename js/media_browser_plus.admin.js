@@ -266,6 +266,10 @@
               // and remove all other selections
             }
             return true;
+          })
+          .dblclick( function(event) {
+            $('input', $(this)).attr('checked', true);
+            $('#media_buttons_edit').click();
           });
         $item = $(item);
         if(Drupal.settings.media_browser_plus.multiselect || Drupal.settings.media_browser_plus.folder_dnd_enabled)
