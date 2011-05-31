@@ -20,6 +20,7 @@ function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
   $path = drupal_get_path('module', 'media_browser_plus');
 
   // add css for both views
+  $form['#attached']['library'][] = array('media_browser_plus', 'media_browser_plus');
   $form['#attached']['library'][] = array('media_browser_plus', 'colorbox');
   // set base href for javascript requests
   $settings = media_browser_plus_main_view_javascript_settings();
@@ -302,7 +303,7 @@ function media_browser_plus_thumbnailsJSON(){
     $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
     $order = array(array("property" => array("fid", "DESC")));
     $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, "order" => $order));
-    module_load_include('inc', 'media', 'media.browser');
+    module_load_include('inc', 'media', 'includes/media.browser');
     foreach($media_entities->results as $media){
       media_browser_build_media_item($media);
     }
@@ -593,7 +594,7 @@ function media_browser_plus_preprocess_media_link(&$variables) {
 function media_browser_plus_preprocess_media_thumbnail(&$variables) {
   // See media_browser_plus_preprocess_media_link(). Same thing here, but for
   // the links that appear underneath thumbnail previews.
-  $media = $variables['element']['#file'];
+  $media = $variables['element']['#object'];
   if (isset($media->media_title[LANGUAGE_NONE][0]['value'])) {
     $variables['element']['#name'] = $media->media_title[LANGUAGE_NONE][0]['value'];
   }
@@ -859,6 +860,7 @@ function media_browser_plus_library() {
   $path = drupal_get_path('module', 'media_browser_plus');
   $libraries['media_browser_plus'] =  array(
     'title' => 'Media Browser Plus',
+    'version' => '1',
     'js' => array(
       $path . '/js/media_browser_plus.admin.menu.js' => array(),
     ),
@@ -989,7 +991,7 @@ function _media_browser_plus_folder_hierarchy_list($list){
  * @param $children
  * @param $hide
  */
-function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, $hide = false){
+function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, $hide = FALSE){
   //
   $path = "http://" . $_SERVER['HTTP_HOST'] . base_path() . drupal_get_path('module', 'media_browser_plus');
   //
@@ -1013,7 +1015,7 @@ function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, 
       $buffer .= "<div id=\"folder_load_".$item->tid."\" class=\"folder_load";
       $buffer .= $has_media ? "" : " emptyFolder";
       $buffer .= "\">" . $item->name . "</div>\n";
-      $buffer .= _media_browser_plus_folder_hierarchy_list_helper($children[$item->tid], $children, false);
+      $buffer .= _media_browser_plus_folder_hierarchy_list_helper($children[$item->tid], $children, TRUE);
       $buffer .= "</li>\n";
     }
     else {
@@ -1629,6 +1631,7 @@ function media_browser_plus_library_browser($form, &$form_state, $multiselect, $
   $path = drupal_get_path('module', 'media_browser_plus');
 
   // assemble library from grid view
+  $form['#attached']['library'][] = array('media_browser_plus', 'media_browser_plus');
   $form['#attached']['library'][] = array('media_browser_plus', 'colorbox');
 
   // set base href for javascript requests
@@ -1732,6 +1735,7 @@ function media_browser_plus_grid_view_form($library_mode = false, $multiselect =
     if(media_access('edit'))
       $form['buttons']['edit_media'] = array(
         '#type' => 'submit',
+        '#attributes' => array('id' => 'media_buttons_edit'),
         '#submit' => array('media_browser_plus_edit_multiple_redirect'),
         '#validate' => array('media_browser_plus_media_admin_validate'),
         '#value' => t('Edit')

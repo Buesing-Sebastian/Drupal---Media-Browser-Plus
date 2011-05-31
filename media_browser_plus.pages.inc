@@ -17,7 +17,7 @@ function media_browser_plus_edit_multiple_form($fids) {
   $variables = array('ids' => $ids, 'paging' => false, 'apply_filter' => false);
   $media_items = media_browser_plus_load_multiple($variables)->results;
   // produce form via multiform
-  module_load_include('inc', 'media', 'media.pages');
+  module_load_include('inc', 'media', 'includes/media.pages');
   $form = media_page_multiedit($media_items);
   // @TODO: change to normale redirect once this works with multiform
   if (isset($_POST['op'])) {
@@ -35,85 +35,6 @@ function media_browser_plus_edit_multiple_form($fids) {
       drupal_goto($destination);
     }
   }
-/*// parsing file ids
-  $fids = explode(" ", $fids);
-  // grab media
-  $variables = array('ids' => $fids, 'paging' => false, 'apply_filter' => false);
-  $media_entities = media_browser_plus_load_multiple($variables);
-  // prepare form
-  $form['edit-list'] = array(
-    '#type' => 'container',
-    '#attributes' => array('id' => 'edit-list', 'style' => 'display: none')
-  );
-  $form['edit-select'] = array(
-    '#type' => 'container',
-    '#attributes' => array('id' => 'edit-select')
-  );
-  $form['edit-items'] = array(
-    '#type' => 'container',
-    '#attributes' => array('id' => 'edit-items')
-  );
-  // loop through media
-  foreach($media_entities->results as $media) {
-    $first = isset($first) ? $first : $media->fid;
-    // add select item
-    $form['edit-list']['edit-list[edit-item-' . $media->fid . ']'] = array(
-      '#type' => 'hidden',
-      '#value' => '0');
-    $thumb = media_get_thumbnail_preview($media);
-    $form['edit-select']['edit-' . $media->fid] = array(
-      '#type' => 'markup',
-      '#markup' => '<li><div id="media-select-' . $media->fid . '" class="media-select" style="display: inline;">' .
-        $thumb[0]['#markup'] .
-        '</div></li>');
-     $path = drupal_get_path('module', 'media');
-     module_load_include('inc', 'media', 'media.pages');
-     $form['edit-items']['edit-' . $media->fid] = array(
-       '#type' => 'fieldset',
-       '#attributes' => array(
-         'id' => 'edit-item-' . $media->fid,
-         'style' => 'display: none;'));
-     $form['edit-items']['edit-' . $media->fid]['preview'] = field_view_field('media', $media, 'file', 'media_preview');
-     $form['edit-items']['edit-' . $media->fid]['preview']['#weight'] = -10;
-     field_attach_form('media', $media, $form['edit-items']['edit-' . $media->fid], $form_state);
-     unset($form['edit-items']['edit-' . $media->fid]['file']);
-  }
-  $render = '';
-  foreach($form['edit-select'] as $key => $value) {
-    $render .= drupal_render($form['edit-select'][$key]);
-  }
-  $form['edit-select'] = array(
-    '#type' => 'markup',
-    '#markup' => '<div id="edit-select"><ul id="navlist">' . $render . '</ul></div>'
-  );
-  $path = drupal_get_path('module', 'media_browser_plus');
-  $form['#attached']['css'][] = $path . '/css/jquery.jscrollpane.css';
-  $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
-  $form['#attached']['js'][] = $path . '/js/jquery.mousewheel.js';
-  $form['#attached']['js'][] = $path . '/js/mwheelIntent.js';
-  $form['#attached']['js'][] = $path . '/js/jquery.jscrollpane.min.js';
-  $form['#attached']['js'][] = $path . '/js/media_browser_plus.admin.edit_multiple.js';
-  $setting['media_browser_plus']['current_edit_item'] = $first;
-  $form['#attached']['js'][] = array(
-    'type' => 'setting',
-    'data' => $setting,
-  );
-  // append actions
-  $form['actions'] = array(
-    '#type' => 'actions',
-      'delete' => array(
-        '#type' => 'submit',
-        '#value' => t('Save all changes'),
-        '#weight' => 5,
-        '#submit' => array('media_browser_plus_edit_multiple_submit'),
-        '#limit_validation_errors' => array()),
-      'submit' => array(
-        '#type' => 'submit',
-        '#value' => t('Discard all changes'),
-        '#weight' => 15,
-        '#submit' => array('media_browser_plus_edit_multiple_discard')),
-        '#limit_validation_errors' => array());
-  */
   return $form;
 }
 
@@ -130,7 +51,7 @@ function media_browser_plus_delete_multiple_form($form, &$form_state, $fids) {
   foreach(explode(" ", $fids) as $key => $value) {
     $files[$value] = $value;
   }
-  module_load_include('inc', 'media', 'media.pages');
+  module_load_include('inc', 'media', 'includes/media.pages');
   $form = media_multiple_delete_confirm($form, $form_state, $files);
   return $form;
 }
