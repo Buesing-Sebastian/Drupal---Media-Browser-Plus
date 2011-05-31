@@ -1,5 +1,5 @@
 <?php
-// $Id$ 
+// $Id$
 
 /**
  * @file
@@ -19,6 +19,7 @@ function media_browser_plus_install() {
  * Make sure the field_tags field exists and is of the right type.
  */
 function _media_browser_plus_ensure_field_tags() {
+  $t = get_t();
   // Make sure the 'tags' vocabulary exists.
   $vocabulary = taxonomy_vocabulary_machine_name_load('tags');
   if (!$vocabulary) {

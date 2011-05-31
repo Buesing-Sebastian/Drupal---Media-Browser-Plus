@@ -487,7 +487,8 @@ function media_browser_plus_submit($form, &$form_state) {
   if (!is_array($fids)) {
     $fids = array($fids);
   }
-  $media_entities = media_load_multiple($fids);
+  $media_entities = file_load_multiple($fids);
+  $needs_save = FALSE;
 
   // If tags have been entered, apply them to each new entity.
   if (!empty($form_state['values']['field_tags'])) {
@@ -501,14 +502,17 @@ function media_browser_plus_submit($form, &$form_state) {
       }
       unset($item);
     }
+
     foreach ($media_entities as $media) {
       $media->field_tags[LANGUAGE_NONE] = $form_state['values']['field_tags'];
     }
+    $needs_save = TRUE;
   }
   // apply folder
   foreach ($media_entities as $media) {
     $media->field_folder[LANGUAGE_NONE] = array(array('tid' => $form_state['values']['field_folder']));
   }
+
   // If the new media is from a 3rd party provider, and that provider also
   // provides MRSS data about the media, then populate the title and description
   // fields from that data.
@@ -524,14 +528,17 @@ function media_browser_plus_submit($form, &$form_state) {
           foreach ($media_entities as $media) {
             if (in_array($media->type, $field['bundles']['media']) && !isset($media->{$field_name}[LANGUAGE_NONE][0]['value'])) {
               $media->{$field_name}[LANGUAGE_NONE][0]['value'] = $value;
+              $needs_save = TRUE;
             }
           }
         }
       }
     }
   }
-  foreach ($media_entities as $media) {
-    media_save($media);
+  if ($needs_save) {
+    foreach ($media_entities as $media) {
+      file_save($media);
+    }
   }
 }
 
@@ -576,7 +583,7 @@ function media_browser_plus_preprocess_media_link(&$variables) {
   // all links that would otherwise default to the filename.
   // @todo Solve generically using the 'label' key of hook_entity_indo(). See
   //   http://drupal.org/node/910396.
-  $media = media_load($variables['file']->fid);
+  $media = file_load($variables['file']->fid);
   if (empty($variables['file']->description) && isset($media->media_title[LANGUAGE_NONE][0]['value'])) {
     $variables['file']->description = $media->media_title[LANGUAGE_NONE][0]['value'];
   }
@@ -588,11 +595,7 @@ function media_browser_plus_preprocess_media_link(&$variables) {
 function media_browser_plus_preprocess_media_thumbnail(&$variables) {
   // See media_browser_plus_preprocess_media_link(). Same thing here, but for
   // the links that appear underneath thumbnail previews.
-  if(!isset($variables['element']['#object'])) {
-    var_dump($variables['element'][0]);
-    return;
-  }
-  $media = $variables['element']['#object'];
+  $media = $variables['element']['#file'];
   if (isset($media->media_title[LANGUAGE_NONE][0]['value'])) {
     $variables['element']['#name'] = $media->media_title[LANGUAGE_NONE][0]['value'];
   }
@@ -1070,7 +1073,7 @@ function media_browser_plus_media_admin_folder_change_submit(&$form, &$form_stat
   $fids = array_keys(array_filter($form_state['values']['files']));
   $folder = (int) $form_state['values']['selected_folder'];
   // load media
-  $media_entities = media_load_multiple($fids);
+  $media_entities = file_load_multiple($fids);
   // apply folder
   foreach ($media_entities as $media) {
     if(isset($media->field_folder[LANGUAGE_NONE][0]['tid']))
