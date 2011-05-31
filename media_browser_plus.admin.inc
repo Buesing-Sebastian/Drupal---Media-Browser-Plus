@@ -1,6 +1,4 @@
 <?php
-// $Id$
-
 /**
  * @file
  * This file contains the admin functions for the Media browser plus module.
@@ -67,6 +65,5 @@ function media_browser_plus_folder_media_import_finished($success, $results, $op
     drupal_set_message(t('Error during media batch'), 'error');
   }
   variable_del('media_folder_import_start');
+  drupal_goto('admin/content/media');
 }
-
-?>

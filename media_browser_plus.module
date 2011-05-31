@@ -1,6 +1,4 @@
 <?php
-// $Id$
-
 /**
  * @file
  * Adds fields to the media browser forms for better UX
@@ -17,12 +15,11 @@ require_once ( dirname(__FILE__) . '/includes/media_browser_plus.variables.inc')
  * Alter the media browser from to enable new UI
  */
 function media_browser_plus_form_media_admin_alter(&$form, &$form_state) {
-  // add css for both views
   $path = drupal_get_path('module', 'media_browser_plus');
-  $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
-  $form['#attached']['css'][] = $path . '/css/colorbox.css';
-  $form['#attached']['js'][] = $path . '/js/media_browser_plus.admin.menu.js';
-  $form['#attached']['js'][] = $path . '/js/colorbox/jquery.colorbox-min.js';
+
+  // add css for both views
+  $form['#attached']['library'][] = array('media_browser_plus', 'media_browser_plus');
+  $form['#attached']['library'][] = array('media_browser_plus', 'colorbox');
   // set base href for javascript requests
   $settings = media_browser_plus_main_view_javascript_settings();
   //
@@ -108,6 +105,8 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
     $conditions[] = array("property" => array("fid", array($ids), "IN"));
     $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, 'apply_filter' => false, 'paging' => false));
     // create archive
+    apache_setenv('no-gzip', '1');
+    //
     $name = 'media-download-' . md5(microtime() . uniqid());
     $zipFile = '/tmp/'.$name.'.zip';
     $zip = new ZipArchive;
@@ -117,10 +116,23 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
         $zip->addFile(drupal_realpath($media->uri), $media->filename);
       }
       $zip->close();
+      /** OLD
       header("Content-type: application/zip");
       header("Content-Disposition: attachment; filename=$zipFile");
+      header("Content-Length: " . filesize($zipFile));
       header("Pragma: no-cache");
       header("Expires: 0");
+      **/
+      header("Cache-Control: public");
+      header("Pragma: public");
+      header("Expires: 0");
+      header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+      header("Cache-Control: public");
+      //header("Content-Description: File Transfer");
+      //header("Content-type: application/zip");
+      header("Content-Disposition: attachment; filename=$zipFile");
+      //header("Content-Transfer-Encoding: binary");
+      header("Content-length: " . filesize($zipFile));
       readfile($zipFile);
       unlink($zipFile);
       die();
@@ -289,7 +301,7 @@ function media_browser_plus_thumbnailsJSON(){
     $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
     $order = array(array("property" => array("fid", "DESC")));
     $media_entities = media_browser_plus_load_multiple(array("conditions" =>$conditions, "order" => $order));
-    module_load_include('inc', 'media', 'media.browser');
+    module_load_include('inc', 'media', 'includes/media.browser');
     foreach($media_entities->results as $media){
       media_browser_build_media_item($media);
     }
@@ -472,7 +484,8 @@ function media_browser_plus_submit($form, &$form_state) {
   if (!is_array($fids)) {
     $fids = array($fids);
   }
-  $media_entities = media_load_multiple($fids);
+  $media_entities = file_load_multiple($fids);
+  $needs_save = FALSE;
 
   // If tags have been entered, apply them to each new entity.
   if (!empty($form_state['values']['field_tags'])) {
@@ -486,14 +499,17 @@ function media_browser_plus_submit($form, &$form_state) {
       }
       unset($item);
     }
+
     foreach ($media_entities as $media) {
       $media->field_tags[LANGUAGE_NONE] = $form_state['values']['field_tags'];
     }
+    $needs_save = TRUE;
   }
   // apply folder
   foreach ($media_entities as $media) {
     $media->field_folder[LANGUAGE_NONE] = array(array('tid' => $form_state['values']['field_folder']));
   }
+
   // If the new media is from a 3rd party provider, and that provider also
   // provides MRSS data about the media, then populate the title and description
   // fields from that data.
@@ -509,14 +525,17 @@ function media_browser_plus_submit($form, &$form_state) {
           foreach ($media_entities as $media) {
             if (in_array($media->type, $field['bundles']['media']) && !isset($media->{$field_name}[LANGUAGE_NONE][0]['value'])) {
               $media->{$field_name}[LANGUAGE_NONE][0]['value'] = $value;
+              $needs_save = TRUE;
             }
           }
         }
       }
     }
   }
-  foreach ($media_entities as $media) {
-    media_save($media);
+  if ($needs_save) {
+    foreach ($media_entities as $media) {
+      file_save($media);
+    }
   }
 }
 
@@ -561,7 +580,7 @@ function media_browser_plus_preprocess_media_link(&$variables) {
   // all links that would otherwise default to the filename.
   // @todo Solve generically using the 'label' key of hook_entity_indo(). See
   //   http://drupal.org/node/910396.
-  $media = media_load($variables['file']->fid);
+  $media = file_load($variables['file']->fid);
   if (empty($variables['file']->description) && isset($media->media_title[LANGUAGE_NONE][0]['value'])) {
     $variables['file']->description = $media->media_title[LANGUAGE_NONE][0]['value'];
   }
@@ -573,10 +592,6 @@ function media_browser_plus_preprocess_media_link(&$variables) {
 function media_browser_plus_preprocess_media_thumbnail(&$variables) {
   // See media_browser_plus_preprocess_media_link(). Same thing here, but for
   // the links that appear underneath thumbnail previews.
-  if(!isset($variables['element']['#object'])) {
-    var_dump($variables['element'][0]);
-    return;
-  }
   $media = $variables['element']['#object'];
   if (isset($media->media_title[LANGUAGE_NONE][0]['value'])) {
     $variables['element']['#name'] = $media->media_title[LANGUAGE_NONE][0]['value'];
@@ -820,6 +835,49 @@ function media_browser_plus_permission() {
 }
 
 /**
+ * Implements hook_library().
+ */
+function media_browser_plus_library() {
+  $library_path = variable_get('media_browser_plus_library_path', 'sites/all/libraries');
+  $stylesheet = variable_get('media_browser_plus_stylesheet', 'example1');
+  $libraries['colorbox'] = array(
+    'title' => 'Colorbox',
+    'website' => 'http://colorpowered.com/colorbox/',
+    'version' => '1.3.9',
+    'js' => array(
+      $library_path . '/colorbox/colorbox/jquery.colorbox-min.js' => array(),
+    ),
+    'css' => array(
+      $library_path . '/colorbox/' . $stylesheet . '/colorbox.css' => array(
+        'type' => 'file',
+        'media' => 'screen',
+      ),
+    ),
+  );
+
+  $path = drupal_get_path('module', 'media_browser_plus');
+  $libraries['media_browser_plus'] =  array(
+    'title' => 'Media Browser Plus',
+    'version' => '1',
+    'js' => array(
+      $path . '/js/media_browser_plus.admin.menu.js' => array(),
+    ),
+    'css' => array(
+      $path . '/css/media_browser_plus.admin.css' => array(
+        'type' => 'file',
+        'media' => 'screen',
+      ),
+      $path . '/css/colorbox.css' => array(
+        'type' => 'file',
+        'media' => 'screen',
+      ),
+    ),
+  );
+
+  return $libraries;
+}
+
+/**
  * Enter description here ...
  * @param $field
  * @param $entity_type
@@ -931,9 +989,9 @@ function _media_browser_plus_folder_hierarchy_list($list){
  * @param $children
  * @param $hide
  */
-function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, $hide = false){
+function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, $hide = FALSE){
   //
-  $path = "http://" . $_SERVER['HTTP_HOST'] . base_path() . drupal_get_path('module', 'media_browser_plus');
+  $path = base_path() . drupal_get_path('module', 'media_browser_plus');
   //
   $buffer  = "<ul ";
   $buffer .=" class=\"";
@@ -955,7 +1013,7 @@ function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, 
       $buffer .= "<div id=\"folder_load_".$item->tid."\" class=\"folder_load";
       $buffer .= $has_media ? "" : " emptyFolder";
       $buffer .= "\">" . $item->name . "</div>\n";
-      $buffer .= _media_browser_plus_folder_hierarchy_list_helper($children[$item->tid], $children, false);
+      $buffer .= _media_browser_plus_folder_hierarchy_list_helper($children[$item->tid], $children, TRUE);
       $buffer .= "</li>\n";
     }
     else {
@@ -1055,7 +1113,7 @@ function media_browser_plus_media_admin_folder_change_submit(&$form, &$form_stat
   $fids = array_keys(array_filter($form_state['values']['files']));
   $folder = (int) $form_state['values']['selected_folder'];
   // load media
-  $media_entities = media_load_multiple($fids);
+  $media_entities = file_load_multiple($fids);
   // apply folder
   foreach ($media_entities as $media) {
     if(isset($media->field_folder[LANGUAGE_NONE][0]['tid']))
@@ -1270,7 +1328,7 @@ function _media_browser_plus_filter_folder_access($folders) {
 function _media_browser_plus_pager($page, $pages){
   // get url for paging link
   $destination = drupal_get_destination();
-  $link = "http://" . $_SERVER['HTTP_HOST'] . base_path() . '?q=admin/content/media/list';
+  $link = base_path() . '?q=admin/content/media/list';
   $sort = isset($_GET['sort']) ? "&sort=" . check_plain($_GET['sort']) : "";
   $order = isset($_GET['order']) ? "&order=" . check_plain($_GET['order']) : "";
   $url = $link . $sort . $order;
@@ -1568,11 +1626,12 @@ function media_browser_plus_media_browser_plugins_alter(&$form, &$form_state) {
  * @param $types
  */
 function media_browser_plus_library_browser($form, &$form_state, $multiselect, $types) {
-  // assemble library from grid view
   $path = drupal_get_path('module', 'media_browser_plus');
-  $form['#attached']['css'][] = $path . '/css/media_browser_plus.admin.css';
-  $form['#attached']['css'][] = $path . '/css/colorbox.css';
-  $form['#attached']['js'][] = $path . '/js/colorbox/jquery.colorbox-min.js';
+
+  // assemble library from grid view
+  $form['#attached']['library'][] = array('media_browser_plus', 'media_browser_plus');
+  $form['#attached']['library'][] = array('media_browser_plus', 'colorbox');
+
   // set base href for javascript requests
   $settings = media_browser_plus_main_view_javascript_settings();
   $settings['media_browser_plus']['multiselect'] = $multiselect;
@@ -1674,6 +1733,7 @@ function media_browser_plus_grid_view_form($library_mode = false, $multiselect =
     if(media_access('edit'))
       $form['buttons']['edit_media'] = array(
         '#type' => 'submit',
+        '#attributes' => array('id' => 'media_buttons_edit'),
         '#submit' => array('media_browser_plus_edit_multiple_redirect'),
         '#validate' => array('media_browser_plus_media_admin_validate'),
         '#value' => t('Edit')
@@ -1745,10 +1805,10 @@ function media_browser_plus_grid_view_form($library_mode = false, $multiselect =
  * returns default javascript settings
  */
 function media_browser_plus_main_view_javascript_settings() {
+  global $base_url;
   // gather enviroment data
   $path = drupal_get_path('module', 'media_browser_plus');
-  $host = "http://" . $_SERVER['HTTP_HOST'];
-  $url = $host . base_path();
+  $url = $base_url . base_path();
   // create default settings
   $settings = array(
     'media_browser_plus' => array(
@@ -1758,7 +1818,7 @@ function media_browser_plus_main_view_javascript_settings() {
       'page' => isset($_GET['page']) ? $_GET['page'] : 0,
       'per_page' => variable_get('media_media_per_page'),
       'page_items_per_page' => variable_get('media_page_items_per_page'),
-      'folder_management_url' => $host . url('admin/content/media/folder_list'),
+      'folder_management_url' => url('admin/content/media/folder_list'),
       'multiselect' => true,
   // texts
       'messages' => array(
