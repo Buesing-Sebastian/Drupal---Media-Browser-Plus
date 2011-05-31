@@ -991,7 +991,7 @@ function _media_browser_plus_folder_hierarchy_list($list){
  */
 function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, $hide = FALSE){
   //
-  $path = "http://" . $_SERVER['HTTP_HOST'] . base_path() . drupal_get_path('module', 'media_browser_plus');
+  $path = base_path() . drupal_get_path('module', 'media_browser_plus');
   //
   $buffer  = "<ul ";
   $buffer .=" class=\"";
@@ -1328,7 +1328,7 @@ function _media_browser_plus_filter_folder_access($folders) {
 function _media_browser_plus_pager($page, $pages){
   // get url for paging link
   $destination = drupal_get_destination();
-  $link = "http://" . $_SERVER['HTTP_HOST'] . base_path() . '?q=admin/content/media/list';
+  $link = base_path() . '?q=admin/content/media/list';
   $sort = isset($_GET['sort']) ? "&sort=" . check_plain($_GET['sort']) : "";
   $order = isset($_GET['order']) ? "&order=" . check_plain($_GET['order']) : "";
   $url = $link . $sort . $order;
@@ -1808,7 +1808,6 @@ function media_browser_plus_main_view_javascript_settings() {
   global $base_url;
   // gather enviroment data
   $path = drupal_get_path('module', 'media_browser_plus');
-  $host = "http://" . $_SERVER['HTTP_HOST'];
   $url = $base_url . base_path();
   // create default settings
   $settings = array(
@@ -1819,7 +1818,7 @@ function media_browser_plus_main_view_javascript_settings() {
       'page' => isset($_GET['page']) ? $_GET['page'] : 0,
       'per_page' => variable_get('media_media_per_page'),
       'page_items_per_page' => variable_get('media_page_items_per_page'),
-      'folder_management_url' => $host . url('admin/content/media/folder_list'),
+      'folder_management_url' => url('admin/content/media/folder_list'),
       'multiselect' => true,
   // texts
       'messages' => array(

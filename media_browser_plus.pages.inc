@@ -76,7 +76,6 @@ function media_browser_plus_media_preview($form, &$form_state, $media) {
       $sy = $maxHeight;
       $sx = bcmul($sx, $ratio, 0);
     }
-    $base_url = "http://" . $_SERVER['HTTP_HOST'] . base_path();
     $uri = "";
     if(strstr($media->uri, "private://")) {
       $stream = new DrupalPrivateStreamWrapper();
