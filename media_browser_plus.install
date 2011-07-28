@@ -37,7 +37,7 @@ function _media_browser_plus_ensure_field_tags() {
     'type' => 'taxonomy_term_reference',
     // Set cardinality to unlimited for tagging.
     'cardinality' => FIELD_CARDINALITY_UNLIMITED,
-    'entity_type' => 'media',
+    'entity_type' => 'file',
     'label' => 'Tags',
     'widget' => array('type' => 'taxonomy_autocomplete'),
     'settings' => array(
@@ -81,7 +81,7 @@ function _media_browser_plus_ensure_field_folder() {
     'type' => 'taxonomy_term_reference',
     // media file can only be in one folder at a time
     'cardinality' => 1,
-    'entity_type' => 'media',
+    'entity_type' => 'file',
     'bundle' => 'image',
     'required' => TRUE,
     'settings' => array(

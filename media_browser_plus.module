@@ -272,14 +272,14 @@ function _media_browser_plus_media_admin_list_alter(&$form, &$form_state){
 function media_browser_plus_change_folder($form, &$form_state){
   // parse values
   $folder = (int) (str_replace("folder_load_", "", $form_state['input']['folder']));
-  $media = media_load((int) (str_replace("edit-files-", "", $form_state['input']['media'])));
+  $media = file_load((int) (str_replace("edit-files-", "", $form_state['input']['media'])));
   // apply new folder
   if(isset($media->field_folder[LANGUAGE_NONE][0]['tid']))
     $media->field_folder[LANGUAGE_NONE][0]['tid'] = $folder;
   else
     $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $folder)));
   // save and exit
-  media_save($media);
+  file_save($media);
   die("");
   return $form;
 }
@@ -404,14 +404,14 @@ function media_browser_plus_media_import_batch_import_files($files, $form_values
       $file_obj = media_parse_to_file($file);
       $context['results']['success'][] = $file;
       if (!$image_in_message) {
-        $media = media_load($file_obj->fid);
-        $image_in_message = field_view_field('media', $media, 'file', 'media_preview');
+        $media = file_load($file_obj->fid);
+        $image_in_message = field_view_field('file', $media, 'file', 'media_preview');
       }
       // adding fields here
-      $media = media_load($file_obj->fid);
+      $media = file_load($file_obj->fid);
       $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $form_values['field_folder'])));
       $media->field_tags = array(LANGUAGE_NONE => $form_values['field_tags']);
-      media_save($media);
+      file_save($media);
     }
     catch(Exception $e) {
       $context['results']['errors'][] = $file . " Reason: " . $e->getMessage();
@@ -592,7 +592,7 @@ function media_browser_plus_preprocess_media_link(&$variables) {
 function media_browser_plus_preprocess_media_thumbnail(&$variables) {
   // See media_browser_plus_preprocess_media_link(). Same thing here, but for
   // the links that appear underneath thumbnail previews.
-  $media = $variables['element']['#object'];
+  $media = $variables['element']['#file'];
   if (isset($media->media_title[LANGUAGE_NONE][0]['value'])) {
     $variables['element']['#name'] = $media->media_title[LANGUAGE_NONE][0]['value'];
   }
@@ -885,7 +885,7 @@ function media_browser_plus_library() {
  */
 function media_browser_plus_file_download_access($field, $entity_type, $entity) {
   // only check against media entities
-  if($entity_type == 'media') {
+  if($entity_type == 'file') {
     // check for media admin AND return true if found
     return media_browser_plus_media_access($entity);
   }
@@ -926,8 +926,8 @@ function media_browser_plus_media_access($media_entity) {
  * @param $entity
  */
 function media_browser_plus_file_download_access_alter(&$grants, $field, $entity_type, $entity = null) {
-  if($entity_type == 'media'){
-    unset($grants['media']);
+  if($entity_type == 'file'){
+    unset($grants['file']);
   }
 }
 
@@ -1076,7 +1076,7 @@ function _media_browser_plus_create_relationship_list($categories){
  */
 function _media_browser_plus_has_unsorted_media(){
   // loading media
-  $entity_controller = entity_get_controller('media');
+  $entity_controller = entity_get_controller('file');
   $media_entities = $entity_controller->load(NULL, array(), 0, 100);
   //
   foreach($media_entities as $media){
@@ -1121,7 +1121,7 @@ function media_browser_plus_media_admin_folder_change_submit(&$form, &$form_stat
     else
       $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $folder)));
     // save changes
-    media_save($media);
+    file_save($media);
   }
   //
   drupal_set_message(t('Folder changes applied successfully'));
@@ -1191,7 +1191,7 @@ function media_browser_plus_load_multiple($variables){
   }
   $query = new EntityFieldQuery();
   // set entity type to media
-  $query->entityCondition('entity_type', 'media');
+  $query->entityCondition('entity_type', 'file');
   // parse ids if any have been passed
   if(count($params['ids'])){
     $query->entityCondition('entity_id', $params['ids'], 'IN');
@@ -1269,9 +1269,9 @@ function media_browser_plus_load_multiple($variables){
   $res_object->results = array();
   // execute query and load results
   $result = $query->execute();
-  if (!empty($result['media'])) {
-    $res_object->results = $params['ids_only'] ? array_keys($result['media']) :
-      entity_load('media', array_keys($result['media']));
+  if (!empty($result['file'])) {
+    $res_object->results = $params['ids_only'] ? array_keys($result['file']) :
+      entity_load('file', array_keys($result['file']));
   }
   // and return the object
   return $res_object;
@@ -1456,7 +1456,7 @@ function media_browser_plus_media_settings_validate($form, &$form_state) {
  * implements hook_field_attach_presave() and makes sure all media is in a folder
  */
 function media_browser_plus_field_attach_presave($entity_type, $entity) {
-  if($entity_type != 'media')
+  if($entity_type != 'file')
     return;
   // look for folder and set default if none found
   // $media->field_folder[LANGUAGE_NONE] = array(array('tid' => $form_state['values']['field_folder']));
@@ -1674,9 +1674,9 @@ function media_browser_plus_library_browser($form, &$form_state, $multiselect, $
  * @param $file
  */
 function media_browser_plus_file_delete($file) {
-  $media = media_load($file->fid);
-  module_invoke_all('entity_delete', $media, 'media');
-  field_attach_delete('media', $media);
+  $media = file_load($file->fid);
+  module_invoke_all('entity_delete', $media, 'file');
+  field_attach_delete('file', $media);
 }
 
 ///////////////////////////////////////////////////////////////

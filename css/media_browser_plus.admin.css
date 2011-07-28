@@ -88,9 +88,11 @@
   font-weight: bold;
 }
 
-.media-item .label-wrapper {
-  margin-left: 0;
+#media-thumb-list .media-item .label-wrapper,
+#media-basket-list .media-item .label-wrapper {
+  margin-left: 0px;
 }
+
 
 #media_browser_plus_pages .media_paging_page {
   float: left;
@@ -150,7 +152,8 @@
   text-decoration: none;
 }
 
-.media-item {
+#media-thumb-list .media-item,
+#media-basket-list .media-item{
   padding: 16px 16px 4px 16px;
 }
 

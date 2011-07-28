@@ -88,7 +88,7 @@ function media_browser_plus_media_preview($form, &$form_state, $media) {
     echo '<div class="preview-metadata" title="'.$media->filename.'">' .
       '<img width="'.$sx.'" height="'.$sy.'" src="'.$uri.'" /></div>';
   } else {
-    $form['preview'] = media_get_thumbnail_preview(media_load($media->fid), TRUE);
+    $form['preview'] = media_get_thumbnail_preview(file_load($media->fid), TRUE);
     echo drupal_render($form['preview']);
   }
   die();
@@ -355,3 +355,4 @@ function media_browser_plus_media_filter_clear($form, &$form_state) {
   // go back to media overview
   //$form_state['redirect'] = array('admin/content/media');
 }
+
