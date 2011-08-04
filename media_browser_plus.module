@@ -295,7 +295,22 @@ function media_browser_plus_thumbnailsJSON(){
     // check for filter set by library
     if(isset($_GET['filter'])) {
       $filter = drupal_json_decode($_GET['filter']);
-      $conditions = $filter;
+      // bugfix - $conditions = $filter;
+      foreach($filter as $key => $value) {
+        // checking each filter
+        $valid = true;
+        foreach($value as $type => $params) {
+          foreach($params as $param) {
+            
+            if(strlen(trim($param)) == 0) {
+              $valid = false;
+              break;
+            }
+          }  
+        }
+        if($valid)
+          $conditions[] = $value;
+      }
     }
     // more conditions
     $conditions[] = array("field" => array("field_folder", "tid", array($folder), "IN"));
@@ -1547,7 +1562,7 @@ function media_browser_plus_get_media_root_folder($autocreate = false) {
     foreach($results as $result) {
       $term_id = $result->tid;
     }
-    if(!$term_id && $autocreate) {
+    if(!isset($term_id) && $autocreate) {
       $media_root_term = new stdClass();
       $media_root_term->name = 'Media Root';
       $media_root_term->description = 'default media folder';
