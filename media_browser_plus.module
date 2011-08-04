@@ -1829,7 +1829,7 @@ function media_browser_plus_main_view_javascript_settings() {
     'media_browser_plus' => array(
       'filter_active' => isset($_SESSION['media-filter']),
       'url' => $url,
-      'images_url' => $url . $path . "/images/",
+      'images_url' => $base_url . "/" . $path . "/images/",
       'page' => isset($_GET['page']) ? $_GET['page'] : 0,
       'per_page' => variable_get('media_media_per_page'),
       'page_items_per_page' => variable_get('media_page_items_per_page'),
