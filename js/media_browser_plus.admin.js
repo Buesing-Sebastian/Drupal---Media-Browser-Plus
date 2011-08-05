@@ -87,7 +87,7 @@
         return false;
       }); 
       $('#select_preview_item').bind('click', function( event ) {
-        $media = $('div.media-item', $('li[fid="' + selectedPreviewItems[selectedPreviewIndex] + '"]', $('#media-thumb-list')));
+        $media = $('div.media-item', $('#media-item-' + selectedPreviewItems[selectedPreviewIndex], $('#media-thumb-list')));
         Drupal.behaviors.media_browser_folders.selectMedia($media);
         return false;
       });
@@ -324,8 +324,8 @@
           myWidth = document.body.clientWidth;
           myHeight = document.body.clientHeight;
         }
-        $maxWidth = myWidth - 50;
-        $maxHeight = myHeight - 150;
+        $maxWidth = myWidth - 100;
+        $maxHeight = myHeight - 250;
         $.post(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/" + id +"/preview", { maxWidth: $maxWidth, maxHeight: $maxHeight}, Drupal.behaviors.media_browser_folders.displayLoadedPreview);
         $('#media_browser_plus_preview_content').html('<img src="'+Drupal.settings.media_browser_plus.images_url+'loading.gif" />');
       }

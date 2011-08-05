@@ -787,7 +787,7 @@ function media_browser_plus_menu(){
     'access arguments' => array('administer media folders'),
     'file' => 'media_browser_plus.folders.inc'
   );
-  $items['admin/content/media/%media/preview'] = array(
+  $items['admin/content/media/%file/preview'] = array(
     'title' => 'Preview Media',
     'description' => 'Preview Media Item',
     'page callback' => 'drupal_get_form',
