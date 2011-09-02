@@ -523,6 +523,7 @@ function media_browser_plus_submit($form, &$form_state) {
   // apply folder
   foreach ($media_entities as $media) {
     $media->field_folder[LANGUAGE_NONE] = array(array('tid' => $form_state['values']['field_folder']));
+    $needs_save = TRUE;
   }
 
   // If the new media is from a 3rd party provider, and that provider also
@@ -704,7 +705,7 @@ function media_browser_plus_menu(){
     'title' => 'Change Folder',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_change_folder'),
-    'file' => 'media_browser_plus.module',
+    'file' => 'includes/media_browser_plus.module',
     'access callback' => 'media_access',
     'access arguments' => array('edit')
   );
@@ -712,7 +713,7 @@ function media_browser_plus_menu(){
     'title' => 'Media Filter',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_media_filter'),
-    'file' => 'media_browser_plus.pages.inc',
+    'file' => 'includes/media_browser_plus.pages.inc',
     'access callback' => 'media_access',
     'access arguments' => array('filter'),
     'type' => MENU_LOCAL_ACTION,
@@ -721,7 +722,6 @@ function media_browser_plus_menu(){
   $items['admin/content/media/thumbnailsJSON'] = array(
     'title' => 'Load Media Entities',
     'page callback' => 'media_browser_plus_thumbnailsJSON',
-    'file' => 'media_browser_plus.module',
     'access callback' => 'media_access',
     'access arguments' => array('preview')
   );
@@ -730,7 +730,6 @@ function media_browser_plus_menu(){
     'description' => 'Change the behaviour and layout of the media browser plus UI',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_media_settings'),
-    'file' => 'media_browser_plus.module',
     'access callback' => 'media_access',
     'access arguments' => array('administer')
   );
@@ -738,7 +737,7 @@ function media_browser_plus_menu(){
     'title' => 'Edit Media Items',
     'page callback' => 'media_browser_plus_edit_multiple_form',
     'page arguments' => array(4),
-    'file' => 'media_browser_plus.pages.inc',
+    'file' => 'includes/media_browser_plus.pages.inc',
     'access callback' => 'media_access',
     'access arguments' => array('edit')
   );
@@ -746,7 +745,7 @@ function media_browser_plus_menu(){
     'title' => 'Delete Media Items',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_delete_multiple_form', 4),
-    'file' => 'media_browser_plus.pages.inc',
+    'file' => 'includes/media_browser_plus.pages.inc',
     'access callback' => 'media_access',
     'access arguments' => array('edit')
   );
@@ -756,7 +755,7 @@ function media_browser_plus_menu(){
     'description' => 'Manage your media folders',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_folder_list'),
-    'file' => 'media_browser_plus.folders.inc',
+    'file' => 'includes/media_browser_plus.folders.inc',
     'access callback' => 'media_browser_plus_access',
     'access arguments' => array('administer media folders')
   );
@@ -767,7 +766,7 @@ function media_browser_plus_menu(){
     'page arguments' => array('media_browser_plus_folder_add'),
     'access callback' => 'media_browser_plus_access',
     'access arguments' => array('administer media folders'),
-    'file' => 'media_browser_plus.folders.inc',
+    'file' => 'includes/media_browser_plus.folders.inc',
   );
   $items['admin/content/media/folder/%media_browser_plus_folder/edit'] = array(
     'title' => 'Edit Folder',
@@ -776,7 +775,7 @@ function media_browser_plus_menu(){
     'page arguments'  => array('media_browser_plus_folder_edit', 4),
     'access callback' => 'media_browser_plus_access',
     'access arguments' => array('administer media folders'),
-    'file' => 'media_browser_plus.folders.inc'
+    'file' => 'includes/media_browser_plus.folders.inc'
   );
   $items['admin/content/media/folder/%media_browser_plus_folder/delete'] = array(
     'title' => 'Delete Folder',
@@ -785,7 +784,7 @@ function media_browser_plus_menu(){
     'page arguments'  => array('media_browser_plus_folder_delete', 4),
     'access callback' => 'media_browser_plus_access',
     'access arguments' => array('administer media folders'),
-    'file' => 'media_browser_plus.folders.inc'
+    'file' => 'includes/media_browser_plus.folders.inc'
   );
   $items['admin/content/media/%file/preview'] = array(
     'title' => 'Preview Media',
@@ -794,7 +793,7 @@ function media_browser_plus_menu(){
     'page arguments'  => array('media_browser_plus_media_preview', 3),
     'access callback' => 'media_access',
     'access arguments' => array('preview'),
-    'file' => 'media_browser_plus.pages.inc'
+    'file' => 'includes/media_browser_plus.pages.inc'
   );
   return $items;
 }
