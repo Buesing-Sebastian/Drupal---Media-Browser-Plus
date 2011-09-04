@@ -5,7 +5,7 @@
  */
 
 /**
- * Create a form to edit multiple fiel entities.
+ * Create a form to edit multiple file entities.
  * @param $fids Array with file id's.
  */
 function media_browser_plus_edit_multiple_form($fids) {

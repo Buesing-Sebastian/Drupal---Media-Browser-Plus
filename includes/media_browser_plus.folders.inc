@@ -44,14 +44,19 @@ function media_browser_plus_folder_list($form, &$form_state) {
   return $form;
 }
 
-function media_browser_plus_folder_list_submit($form, &$form_state) {
+function media_browser_plus_folder_list_submit($form, &$form_state) {dpm($form_state);
   foreach($form_state['input'] as $key => $value) {
     if(strstr($key, "folder_id")) {
       $folder = media_browser_plus_folder_load((int)$value['folder_id']);
+      $source = media_browser_plus_construct_dir_path($folder);
       $folder->parent = (int)$value['pid'];
       $folder->weight = (int)$value['weight'];
       taxonomy_term_save($folder);
-      // @TODO update physical folder structure
+      $destination = media_browser_plus_construct_dir_path($folder);
+      if ($source != $destination) {
+        // update physical folder structure
+        media_browser_plus_move_physical_folder($source, $destination);
+      }
     }
   }
   drupal_set_message(t('Changes saved successfully'));
@@ -300,20 +305,7 @@ function media_browser_plus_folder_save_folder($form_state) {
     case(SAVED_UPDATED):
       // update physical folder
       $destination = media_browser_plus_construct_dir_path($term);
-      $files = @scandir($source);
-      if ($files && count($files) > 2 ) {
-        $destination = drupal_realpath($destination);
-        $source = drupal_realpath($source);
-        $transfer = new FileTransferLocal(drupal_realpath('public://'));
-        $transfer->copyDirectory($source, $destination);
-        $transfer->removeDirectory($source);
-      }
-      else {
-        // the folder is empty so just delete and create the new one
-        drupal_rmdir($source);
-        file_prepare_directory($destination, FILE_CREATE_DIRECTORY);
-      }
-      
+      media_browser_plus_move_physical_folder($source, $destination);
       drupal_set_message(t('Folder "'.$term->name.'" updated successfully'));
     break;
     case(FALSE):

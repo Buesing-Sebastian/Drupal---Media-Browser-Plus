@@ -278,8 +278,12 @@ function media_browser_plus_change_folder($form, &$form_state){
     $media->field_folder[LANGUAGE_NONE][0]['tid'] = $folder;
   else
     $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $folder)));
-  // save and exit
-  file_save($media);
+  // set the filesystem destination
+  $term = media_browser_plus_folder_load($folder);
+  $path = media_browser_plus_construct_dir_path($term);
+  $destination = $path . '/' . $media->filename;
+  // save changes
+  file_move($media, $destination);
   die("");
   return $form;
 }
@@ -1133,12 +1137,18 @@ function media_browser_plus_media_admin_folder_change_submit(&$form, &$form_stat
   $media_entities = file_load_multiple($fids);
   // apply folder
   foreach ($media_entities as $media) {
-    if(isset($media->field_folder[LANGUAGE_NONE][0]['tid']))
+    if(isset($media->field_folder[LANGUAGE_NONE][0]['tid'])) {
       $media->field_folder[LANGUAGE_NONE][0]['tid'] = $folder;
-    else
+    }
+    else {
       $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $folder)));
+    }
+    // set the filesystem destination
+    $term = media_browser_plus_folder_load($folder);
+    $path = media_browser_plus_construct_dir_path($term);
+    $destination = $path . '/' . $media->filename;
     // save changes
-    file_save($media);
+    file_move($media, $destination);
   }
   //
   drupal_set_message(t('Folder changes applied successfully'));
@@ -1976,4 +1986,26 @@ function media_browser_plus_construct_dir_path($term) {
   }
   $path = str_replace('Media Root', variable_get('media_root_folder', 'media'), $path);
   return rtrim($path, '/');
+}
+
+/**
+ * cut-paste a directory with its children into a new filesystem location
+ * @param $source string the current folder path
+ * @param $destination string the path we want the folder moved to
+ */
+function media_browser_plus_move_physical_folder($source, $destination) {
+  $destination = drupal_realpath($destination);
+  $source = drupal_realpath($source);
+  $jail = drupal_realpath(variable_get('file_default_scheme', 'public'));
+  $files = @scandir($source);
+  if ($files && count($files) > 2 ) {
+    $transfer = new FileTransferLocal($jail);
+    $transfer->copyDirectory($source, $destination);
+    $transfer->removeDirectory($source);
+  }
+  else {
+    // the folder is empty so just delete and create the new one
+    drupal_rmdir($source);
+    file_prepare_directory($destination, FILE_CREATE_DIRECTORY);
+  }
 }
