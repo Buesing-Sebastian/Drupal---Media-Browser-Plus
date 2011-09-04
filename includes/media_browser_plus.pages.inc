@@ -11,7 +11,7 @@
 function media_browser_plus_edit_multiple_form($fids) {
   // load media
   $ids = explode(' ', $fids);
-  $variables = array('ids' => $ids, 'paging' => false, 'apply_filter' => false);
+  $variables = array('ids' => $ids, 'paging' => FALSE, 'apply_filter' => FALSE);
   $media_items = media_browser_plus_load_multiple($variables)->results;
   // produce form via multiform
   module_load_include('inc', 'media', 'includes/media.pages');
@@ -23,12 +23,12 @@ function media_browser_plus_edit_multiple_form($fids) {
       unset($_GET['destination']);
     }
     $destination = isset($destination['destination']) ? $destination['destination'] : 'admin/content/media';
-    if($_POST['op'] === 'Save' && !form_get_errors()) {
-      if($_POST['op'] === 'Save' && !form_get_errors())
+    if ($_POST['op'] === 'Save' && !form_get_errors()) {
+      if ($_POST['op'] === 'Save' && !form_get_errors())
         drupal_set_message(t('Media items changed successfully'));
       drupal_goto($destination);
     }
-    if($_POST['op'] === 'Cancel') {
+    if ($_POST['op'] === 'Cancel') {
       drupal_goto($destination);
     }
   }
@@ -45,7 +45,7 @@ function media_browser_plus_edit_multiple_form($fids) {
 function media_browser_plus_delete_multiple_form($form, &$form_state, $fids) {
   // media_multiple_delete_confirm($form, &$form_state, $files
   $files = array();
-  foreach(explode(" ", $fids) as $key => $value) {
+  foreach (explode(" ", $fids) as $key => $value) {
     $files[$value] = $value;
   }
   module_load_include('inc', 'media', 'includes/media.pages');
@@ -61,33 +61,35 @@ function media_browser_plus_delete_multiple_form($form, &$form_state, $fids) {
  * @param $media
  */
 function media_browser_plus_media_preview($form, &$form_state, $media) {
-  if($media->type == 'image') {
-    $maxWidth = (int)$_POST['maxWidth'];
-    $maxHeight = (int)$_POST['maxHeight'];
+  if ($media->type == 'image') {
+    $max_width = (int) $_POST['maxWidth'];
+    $max_height = (int) $_POST['maxHeight'];
     //echo drupal_render($form['preview']);
     list($sx, $sy) = getimagesize(drupal_realpath($media->uri));
-    if($sx > $maxWidth){
-      $ratio = bcdiv($maxWidth, $sx, 5);
-      $sx = $maxWidth;
+    if ($sx > $max_width) {
+      $ratio = bcdiv($max_width, $sx, 5);
+      $sx = $max_width;
       $sy = bcmul($sy, $ratio, 0);
     }
-    if($sy > $maxHeight){
-      $ratio = bcdiv($maxHeight, $sy, 5);
-      $sy = $maxHeight;
+    if ($sy > $max_height) {
+      $ratio = bcdiv($max_height, $sy, 5);
+      $sy = $max_height;
       $sx = bcmul($sx, $ratio, 0);
     }
     $uri = "";
-    if(strstr($media->uri, "private://")) {
+    if (strstr($media->uri, "private://")) {
       $stream = new DrupalPrivateStreamWrapper();
-    } else {
+    }
+    else {
       $stream = new DrupalPublicStreamWrapper();
     }
     $stream->setUri($media->uri);
     $uri = $stream->getExternalUrl($media->uri);
     // output
-    echo '<div class="preview-metadata" title="'.$media->filename.'">' .
-      '<img width="'.$sx.'" height="'.$sy.'" src="'.$uri.'" /></div>';
-  } else {
+    echo '<div class="preview-metadata" title="' . $media->filename . '">' .
+      '<img width="' . $sx . '" height="' . $sy . '" src="' . $uri . '" /></div>';
+  }
+  else {
     $form['preview'] = media_get_thumbnail_preview(file_load($media->fid), TRUE);
     echo drupal_render($form['preview']);
   }
@@ -106,7 +108,7 @@ function media_browser_plus_media_preview_submit($form, &$form_state) {
 /**
  * Enter description
  */
-function media_browser_plus_media_filter(){
+function media_browser_plus_media_filter() {
   $form = array();
   $path = drupal_get_path('module', 'media_browser_plus');
   $form['#attached']['js'][] = $path . '/js/media_browser_plus.filter.js';
@@ -117,20 +119,20 @@ function media_browser_plus_media_filter(){
   $selected_types = array_keys(media_type_get_types());
   $selected_folders = array_keys($folders);
   // apply filter settings
-  if(isset($_SESSION['media-filter'])){
-    if(count($_SESSION['media-filter']['type'])){
-      $selected_types = explode("," ,$_SESSION['media-filter']['type']);
+  if (isset($_SESSION['media-filter'])) {
+    if (count($_SESSION['media-filter']['type'])) {
+      $selected_types = explode("," , $_SESSION['media-filter']['type']);
     }
-    if(count($_SESSION['media-filter']['field_folder'])){
+    if (count($_SESSION['media-filter']['field_folder'])) {
       $selected_folders = $_SESSION['media-filter']['field_folder'];
     }
   }
   // check for tags
   $field_tags = "";
-  if(isset($_SESSION['media-filter']['field_tags']) && count($_SESSION['media-filter']['field_tags'])){
+  if (isset($_SESSION['media-filter']['field_tags']) && count($_SESSION['media-filter']['field_tags'])) {
     // use name buffer array...
     $names = array();
-    foreach($_SESSION['media-filter']['field_tags'] as $tid){
+    foreach ($_SESSION['media-filter']['field_tags'] as $tid) {
       $term = taxonomy_term_load($tid);
       $names[] = $term->name;
     }
@@ -141,21 +143,23 @@ function media_browser_plus_media_filter(){
   $types = media_type_get_types();
   $media_types = array();
   // user labels as display and value for backend
-  foreach($types as $value=>$type) {
-    $access = true;
+  foreach ($types as $value => $type) {
+    $access = TRUE;
     foreach (module_implements('media_type_access') as $module) {
       $access = module_invoke($module, 'media_type_access', $type);
-      if($access === FALSE) {
+      if ($access === FALSE) {
         break;
-      } else {
-        $access = true;
+      }
+      else {
+        $access = TRUE;
       }
     }
-    if($access)
+    if ($access) {
       $media_types[$value] = $type->label;
+    }
   }
   $close = isset($_SESSION['media-filter-autoclose']) ?
-    (int)$_SESSION['media-filter-autoclose'] : 0;
+    (int) $_SESSION['media-filter-autoclose'] : 0;
   $settings['media_browser_plus'] = array('autoclose' => $close);
   // reset otherwise it always auto closes
   unset($_SESSION['media-filter-autoclose']);
@@ -183,8 +187,9 @@ function media_browser_plus_media_filter(){
         '#title' => t('Title'),
         '#maxlength' => 125,
         '#size' => 40,
-        '#value' => (isset($_SESSION['media-filter']['filename']) ? $_SESSION['media-filter']['filename'] : ""),
-        '#required' => FALSE),
+        '#value' => isset($_SESSION['media-filter']['filename']) ? $_SESSION['media-filter']['filename'] : "",
+        '#required' => FALSE,
+      ),
       'field_tags' => array(
         '#attributes' => array('id' => 'media-field-tags-filter'),
         '#type' => 'textfield',
@@ -199,14 +204,16 @@ function media_browser_plus_media_filter(){
         '#language' => LANGUAGE_NONE,
         '#type' => 'textfield',
         '#autocomplete_path' => 'taxonomy/autocomplete/field_tags',
-        '#element_validate' => array('media_browser_plus_prepare_taxonomy_autocomplete_validate', 'taxonomy_autocomplete_validate')),
+        '#element_validate' => array('media_browser_plus_prepare_taxonomy_autocomplete_validate', 'taxonomy_autocomplete_validate'),
+      ),
       'prevent_autoclose' => array(
         '#type' => 'checkbox',
         '#weight' => 10,
         '#attributes' => array('id' => array('media-filter-autoclose')),
         '#title' => t('prevent window from closing after form submit'),
         '#default_value' => (isset($_SESSION['media-filter']['prevent_autoclose']) ?
-                     (int)$_SESSION['media-filter']['prevent_autoclose'] : 0))
+                     (int) $_SESSION['media-filter']['prevent_autoclose'] : 0),
+      ),
     ),
     'column_two' => array(
       '#type' => 'container',
@@ -226,7 +233,8 @@ function media_browser_plus_media_filter(){
           '#required' => FALSE,
           '#attributes' => array('class' => array('media-filter-select')),
           '#prefix' => '<div style="float:left; padding-right: 20px;">',
-          '#suffix' => '</div>'),
+          '#suffix' => '</div>',
+        ),
         'field_folder' => array(
           '#type' => 'select',
           '#title' => t('Media Folder'),
@@ -237,15 +245,18 @@ function media_browser_plus_media_filter(){
           '#weight' => 6,
           '#attributes' => array('class' => array('media-filter-select')),
           '#prefix' => '<div style="float:left; padding-right: 20px;">',
-          '#suffix' => '</div>'),
+          '#suffix' => '</div>',
+        ),
         'include_subfolders' => array(
           '#type' => 'checkbox',
           '#weight' => 10,
           '#attributes' => array('class' => array('media-filter')),
           '#title' => t('include subfolders of selected folders'),
           '#default_value' => (isset($_SESSION['media-filter']['include_subfolders']) ?
-                     $_SESSION['media-filter']['include_subfolders'] : 0))
-    )),
+                     $_SESSION['media-filter']['include_subfolders'] : 0),
+        ),
+      ),
+    ),
     'column_three' => array(
       '#type' => 'container',
       '#prefix' => '<div style="float:left; padding-right: 20px;">',
@@ -258,10 +269,11 @@ function media_browser_plus_media_filter(){
         '#limit_validation_errors' => array(),
         '#validate' => array('media_browser_plus_media_filter_validate'),
         '#prefix' => '<div>',
-        '#suffix' => '</div>')
-    )
+        '#suffix' => '</div>',
+      ),
+    ),
   );
-  if(isset($_SESSION['media-filter'])){
+  if (isset($_SESSION['media-filter'])) {
     $form['filter']['column_three']['clear'] = array(
         '#type' => 'submit',
         '#value' => t('Reset Filter'),
@@ -269,7 +281,7 @@ function media_browser_plus_media_filter(){
         '#limit_validation_errors' => array(),
         '#validate' => array('media_browser_plus_media_filter_validate'),
         '#prefix' => '<div>',
-        '#suffix' => '</div>'
+        '#suffix' => '</div>',
     );
   }
   return $form;
@@ -284,42 +296,42 @@ function media_browser_plus_media_filter_submit($form, &$form_state) {
   // process filter
   $_SESSION['media-filter']['filename'] = check_plain($form_state['input']['filename']);
   $_SESSION['media-filter']['type'] = count($form_state['input']['media_type']) > 0 ?
-    implode(",", $form_state['input']['media_type']) :
-    implode(",", array_keys(media_type_get_types()));
+    implode(',', $form_state['input']['media_type']) :
+    implode(',', array_keys(media_type_get_types()));
   $_SESSION['media-filter']['include_subfolders'] = $form_state['input']['include_subfolders'];
   //
   $tags = check_plain($form_state['input']['field_tags']);
-  $tags = explode(",", $tags);
+  $tags = explode(',', $tags);
   $vocabulary = taxonomy_vocabulary_machine_name_load('tags');
   // process tags filter entry
   $_SESSION['media-filter']['field_tags'] = array();
-  foreach($tags as $tag){
+  foreach ($tags as $tag) {
     // check if tag exists
     $result = db_query('SELECT tid FROM {taxonomy_term_data} ttd WHERE ttd.name = :name AND ttd.vid = :vocabulary',
       array('name' => trim($tag), 'vocabulary' => $vocabulary->vid));
-    foreach($result as $item){
+    foreach ($result as $item) {
       $_SESSION['media-filter']['field_tags'][] = $item->tid;
     }
   }
   $temp = array();
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
   // check field_folder
-  if(count($form_state['input']['field_folder']) == 0){
+  if (count($form_state['input']['field_folder']) == 0) {
     $all = taxonomy_get_tree($vocabulary->vid);
     //
-    foreach($all as $key=>$term){
+    foreach ($all as $key => $term) {
       $temp[$term->tid] = $term->tid;
     }
   }
   else {
-    foreach($form_state['input']['field_folder'] as $key=>$value){
+    foreach ($form_state['input']['field_folder'] as $key => $value) {
       $tid = $value;
       $temp[$tid] = $tid;
       //
-      if($form_state['input']['include_subfolders']){
+      if ($form_state['input']['include_subfolders']) {
         $children = taxonomy_get_tree($vocabulary->vid, $tid);
         //
-        foreach($children as $key=>$term){
+        foreach ($children as $key => $term) {
           $temp[$term->tid] = $term->tid;
         }
       }

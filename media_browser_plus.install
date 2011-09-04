@@ -51,7 +51,7 @@ function _media_browser_plus_ensure_field_tags() {
   );
   _media_browser_plus_ensure_field($field);
   // ensure instance for each media bundle
-  foreach(array_keys(media_type_get_types()) as $bundle){
+  foreach (array_keys(media_type_get_types()) as $bundle) {
     $field['bundle'] = $bundle;
     _media_browser_plus_ensure_instance($field);
   }
@@ -95,7 +95,7 @@ function _media_browser_plus_ensure_field_folder() {
   );
   _media_browser_plus_ensure_field($field);
   // ensure instance for each media bundle
-  foreach(array_keys(media_type_get_types()) as $bundle){
+  foreach (array_keys(media_type_get_types()) as $bundle) {
     $field['bundle'] = $bundle;
     _media_browser_plus_ensure_instance($field);
   }
@@ -129,7 +129,7 @@ function _media_browser_plus_ensure_instance($instance) {
  *
  * @TODO: put files into default folders if not yet in any folder
  */
-function media_browser_plus_enable(){
+function media_browser_plus_enable() {
   // save default settings
   variable_set('media_media_per_page', 30);
   variable_set('media_grid_window_height', 400);
@@ -139,7 +139,7 @@ function media_browser_plus_enable(){
   $dir = variable_get('file_default_scheme', 'public') . '://media/';
   file_prepare_directory($dir, FILE_CREATE_DIRECTORY);
   $term = media_browser_plus_get_media_root_folder(true);
-  if(is_object($term)) {
+  if (is_object($term)) {
     // load all media and apply tid of folder if none set
     variable_set('media_folder_import_start', 0);
     $batch = array(
@@ -159,7 +159,7 @@ function media_browser_plus_enable(){
  *
  * @TODO: discuss if this should be done
  */
-function media_browser_plus_uninstall(){
+function media_browser_plus_uninstall() {
   field_delete_field('field_folder');
   field_delete_field('field_tags');
   variable_del('media_media_per_page');
