@@ -14,9 +14,9 @@ function media_browser_plus_folder_list($form, &$form_state) {
   $form['action-links'] = array(
     '#type' => 'markup',
     '#markup' => '<ul class="action-links"><li>' .
-       l(t('Add new folder'), 'admin/content/media/add_folder', array('query' => $destination)) .
+      l(t('Add new folder'), 'admin/content/media/add_folder', array('query' => $destination)) .
        '</li></ul>',
-   );
+  );
   // table header
   $header = array(
     'name' => array(

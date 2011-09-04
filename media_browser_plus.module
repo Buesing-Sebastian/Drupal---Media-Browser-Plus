@@ -118,13 +118,13 @@ function media_browser_plus_download_images_submit($form, &$form_state) {
         $zip->addFile(drupal_realpath($media->uri), $media->filename);
       }
       $zip->close();
-      /** OLD
+      /* OLD
       header("Content-type: application/zip");
       header("Content-Disposition: attachment; filename=$zipFile");
       header("Content-Length: " . filesize($zipFile));
       header("Pragma: no-cache");
       header("Expires: 0");
-      **/
+      */
       header("Cache-Control: public");
       header("Pragma: public");
       header("Expires: 0");
@@ -443,7 +443,12 @@ function media_browser_plus_media_import_batch_import_files($files, $form_values
       $media = file_load($file_obj->fid);
       $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $form_values['field_folder'])));
       $media->field_tags = array(LANGUAGE_NONE => $form_values['field_tags']);
-      file_save($media);
+
+      $folder = media_browser_plus_folder_load($form_values['field_folder']);
+      $path = media_browser_plus_construct_dir_path($folder);
+
+      $destination = $path . '/' . $media->filename;
+      file_move($media, $destination, FILE_EXISTS_RENAME);
     }
     catch (Exception $e) {
       $context['results']['errors'][] = $file . " Reason: " . $e->getMessage();
@@ -578,6 +583,23 @@ function media_browser_plus_submit($form, &$form_state) {
 }
 
 /**
+ * Form submit handler for the media browser forms that edit media entities.
+ *
+ * Changes file's filesystem physical folder
+ *
+ * @see media_browser_plus_form_media_edit_alter()
+ */
+function media_browser_plus_edit_file_submit($form, &$form_state) {
+  $file = $form_state['file'];
+  if ($form['field_folder'][LANGUAGE_NONE]['#default_value'][0] != $file->field_folder[LANGUAGE_NONE][0]['tid']) {
+    $folder = media_browser_plus_folder_load($file->field_folder[LANGUAGE_NONE][0]['tid']);
+    $path = media_browser_plus_construct_dir_path($folder);
+    $destination = $path . '/' . $file->filename;
+    file_move($file, $destination, FILE_EXISTS_RENAME);
+  }
+}
+
+/**
  * Helper function to return metadata that is available from a 3rd party media provider, such as YouTube.
  *
  * @param $provider
@@ -664,6 +686,7 @@ function media_browser_plus_form_media_edit_alter(&$form, &$form_state) {
     '#weight' => 20,
     '#submit' => array('media_browser_plus_edit_cancel'),
   );
+  $form['actions']['submit']['#submit'][] = 'media_browser_plus_edit_file_submit';
 }
 
 /**

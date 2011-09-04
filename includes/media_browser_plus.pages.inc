@@ -16,6 +16,7 @@ function media_browser_plus_edit_multiple_form($fids) {
   // produce form via multiform
   module_load_include('inc', 'media', 'includes/media.pages');
   $form = media_page_multiedit($media_items);
+
   // @TODO: change to normale redirect once this works with multiform
   if (isset($_POST['op'])) {
     if (isset($_GET['destination'])) {
@@ -24,8 +25,7 @@ function media_browser_plus_edit_multiple_form($fids) {
     }
     $destination = isset($destination['destination']) ? $destination['destination'] : 'admin/content/media';
     if ($_POST['op'] === 'Save' && !form_get_errors()) {
-      if ($_POST['op'] === 'Save' && !form_get_errors())
-        drupal_set_message(t('Media items changed successfully'));
+      drupal_set_message(t('Media items changed successfully'));
       drupal_goto($destination);
     }
     if ($_POST['op'] === 'Cancel') {
@@ -211,8 +211,7 @@ function media_browser_plus_media_filter() {
         '#weight' => 10,
         '#attributes' => array('id' => array('media-filter-autoclose')),
         '#title' => t('prevent window from closing after form submit'),
-        '#default_value' => (isset($_SESSION['media-filter']['prevent_autoclose']) ?
-                     (int) $_SESSION['media-filter']['prevent_autoclose'] : 0),
+        '#default_value' => isset($_SESSION['media-filter']['prevent_autoclose']) ? (int) $_SESSION['media-filter']['prevent_autoclose'] : 0,
       ),
     ),
     'column_two' => array(
@@ -252,8 +251,7 @@ function media_browser_plus_media_filter() {
           '#weight' => 10,
           '#attributes' => array('class' => array('media-filter')),
           '#title' => t('include subfolders of selected folders'),
-          '#default_value' => (isset($_SESSION['media-filter']['include_subfolders']) ?
-                     $_SESSION['media-filter']['include_subfolders'] : 0),
+          '#default_value' => isset($_SESSION['media-filter']['include_subfolders']) ? $_SESSION['media-filter']['include_subfolders'] : 0,
         ),
       ),
     ),
