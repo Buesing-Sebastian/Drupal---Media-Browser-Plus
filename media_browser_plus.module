@@ -549,8 +549,11 @@ function media_browser_plus_submit($form, &$form_state) {
     }
   }
   if ($needs_save) {
+    $folder = media_browser_plus_folder_load($form_state['values']['field_folder']);
+    $path = media_browser_plus_construct_dir_path($folder);
     foreach ($media_entities as $media) {
-      file_save($media);
+      $destination = $path . '/' . $media->filename;
+      file_move($media, $destination, FILE_EXISTS_RENAME);
     }
   }
 }
@@ -1417,7 +1420,13 @@ function media_browser_plus_media_settings($form, &$form_state = array()) {
       '#default_value' => media_variable_get('max_filesize'),
       '#description' => t('Standard unit is MB and therefore can be left out. Otherwise use "NUMBER UNIT"'),
       '#maxlength' => 20,
-      '#required' => TRUE)
+      '#required' => TRUE),
+    'root_folder' => array(
+      '#type' => 'textfield',
+      '#title' => 'Media Root folder',
+      '#default_value' => media_variable_get('media_root_folder', 'media'),
+      '#description' => t('The root folder of uploaded images.Dont use start or end slashes. eg "media/images"'),
+      '#required' => TRUE),
   );
 
   $form['actions'] = array('#type' => 'actions');
@@ -1437,6 +1446,7 @@ function media_browser_plus_media_settings_submit($form, &$form_state) {
   variable_set('media_media_per_page', (int)$form_state['values']['media_per_page']);
   variable_set('media_grid_window_height', (int)$form_state['values']['grid_window_height']);
   variable_set('media_page_items_per_page', (int)$form_state['values']['page_items_per_page']);
+  variable_set('media_root_folder', trim($form_state['values']['root_folder'], '/'));
   media_variable_set('max_filesize', trim($form_state['values']['max_filesize']));
   // notify user
   drupal_set_message(t('Media Browser Plus Settings changed successfully'));
@@ -1952,4 +1962,18 @@ function _media_browser_plus_media_basket_select_button() {
     '#limit_validation_errors' => array(),
     '#validate' => array('media_browser_plus_media_admin_validate')
   );
+}
+
+/**
+ * construct the path of a media_folder term
+ * @param $term object containing term id and term name
+ */
+function media_browser_plus_construct_dir_path($term) {
+  $parents = array_reverse(taxonomy_get_parents_all($term->tid));
+  $path = variable_get('file_default_scheme', 'public') . '://';
+  foreach ($parents as $parent) {
+    $path .= $parent->name . '/';
+  }
+  $path = str_replace('Media Root', variable_get('media_root_folder', 'media'), $path);
+  return rtrim($path, '/');
 }

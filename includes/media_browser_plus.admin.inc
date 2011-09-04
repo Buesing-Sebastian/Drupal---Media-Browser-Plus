@@ -11,7 +11,7 @@
  * @param $files
  * @param $context
  */
-function media_browser_plus_folder_media_import($root, &$context) {
+function media_browser_plus_folder_media_import($root, $dir, &$context) {
   // config
   $per_page = 50;
   if (empty($context['sandbox'])) {
@@ -34,7 +34,8 @@ function media_browser_plus_folder_media_import($root, &$context) {
     if(!isset($media->field_folder[LANGUAGE_NONE])) {
       $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $root)));
       $context['results']['success'] = $media->fid;
-      file_save($media);
+      $destination = $dir . $media->filename;
+      file_move($media, $destination, FILE_EXISTS_RENAME);
     }
   }
   // increment start

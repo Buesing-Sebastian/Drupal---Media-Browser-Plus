@@ -51,6 +51,7 @@ function media_browser_plus_folder_list_submit($form, &$form_state) {
       $folder->parent = (int)$value['pid'];
       $folder->weight = (int)$value['weight'];
       taxonomy_term_save($folder);
+      // @TODO update physical folder structure
     }
   }
   drupal_set_message(t('Changes saved successfully'));
@@ -262,7 +263,8 @@ function media_browser_plus_folder_delete($form, &$form_state, $folder) {
 function media_browser_plus_folder_delete_submit($form, &$form_state) {
   // load folder, delete and return
   $folder = media_browser_plus_folder_load((int)$form_state['values']['folder_id']);
-  if(taxonomy_term_delete($folder->tid))
+  $physical_folder = media_browser_plus_construct_dir_path($folder);
+  if(taxonomy_term_delete($folder->tid) && drupal_rmdir($physical_folder))
     drupal_set_message(t('Folder "'.$folder->name.'" deleted successfully'));
   else
     drupal_set_message(t('Error deleting folder "'.$folder->name.'"'), 'error');
@@ -274,19 +276,44 @@ function media_browser_plus_folder_save_folder($form_state) {
   // parse values
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
   $term = new stdClass();
-  // if update
-  if(isset($form_state['values']['folder_id']))
-    $term->tid = (int)$form_state['values']['folder_id'];
   $term->name = check_plain($form_state['values']['name']);
+
+  // if update
+  if(isset($form_state['values']['folder_id'])) {
+    $term->tid = (int)$form_state['values']['folder_id'];
+    $source = media_browser_plus_construct_dir_path($term);
+  }
+
   $term->description = check_plain($form_state['values']['description']);
   $term->parent = (int)$form_state['values']['pid'];
   $term->vid = $vocabulary->vid;
   // save (folder) term
   switch(taxonomy_term_save($term)) {
     case(SAVED_NEW):
-      drupal_set_message(t('Folder "'.$term->name.'" created successfully'));
+      // create physical folder
+      $dir = media_browser_plus_construct_dir_path($term);
+      if (file_prepare_directory($dir, FILE_CREATE_DIRECTORY))
+        drupal_set_message(t('Folder "'.$term->name.'" created successfully'));
+      else
+        drupal_set_message(t('Folder "'.$term->name.'" created successfully as term but failed to create as physical folder.Please do it manually'), 'warning');
     break;
     case(SAVED_UPDATED):
+      // update physical folder
+      $destination = media_browser_plus_construct_dir_path($term);
+      $files = @scandir($source);
+      if ($files && count($files) > 2 ) {
+        $destination = drupal_realpath($destination);
+        $source = drupal_realpath($source);
+        $transfer = new FileTransferLocal(drupal_realpath('public://'));
+        $transfer->copyDirectory($source, $destination);
+        $transfer->removeDirectory($source);
+      }
+      else {
+        // the folder is empty so just delete and create the new one
+        drupal_rmdir($source);
+        file_prepare_directory($destination, FILE_CREATE_DIRECTORY);
+      }
+      
       drupal_set_message(t('Folder "'.$term->name.'" updated successfully'));
     break;
     case(FALSE):
