@@ -11,7 +11,7 @@
  * @param $files
  * @param $context
  */
-function media_browser_plus_folder_media_import($root, &$context) {
+function media_browser_plus_folder_media_import($root, $dir, &$context) {
   // config
   $per_page = 50;
   if (empty($context['sandbox'])) {
@@ -20,21 +20,22 @@ function media_browser_plus_folder_media_import($root, &$context) {
   }
   // look how far we got and where we have to resume
   $media_start = $context['sandbox']['progress'];
-  $media_count = media_browser_plus_load_multiple(array('apply_filter' => false, 'count_only' => true,));
+  $media_count = media_browser_plus_load_multiple(array('apply_filter' => FALSE, 'count_only' => TRUE));
   $page = $media_start == 0 ? 0 : bcdiv($media_start, $per_page, 0);
   //
-  if(!isset($context['results'])){
+  if (!isset($context['results'])) {
     $context['results'] = array('success' => array(), 'errors' => array());
   }
   $order = array(array("property" => array("fid", "ASC")));
-  $attributes = array('apply_filter' => false, 'paging' => true, 'per_page' => $per_page, 'page' => $page, 'order' => $order);
+  $attributes = array('apply_filter' => FALSE, 'paging' => TRUE, 'per_page' => $per_page, 'page' => $page, 'order' => $order);
   $media_query = media_browser_plus_load_multiple($attributes);
   // Checking media
-  foreach($media_query->results as $media) {
-    if(!isset($media->field_folder[LANGUAGE_NONE])) {
+  foreach ($media_query->results as $media) {
+    if (!isset($media->field_folder[LANGUAGE_NONE])) {
       $media->field_folder = array(LANGUAGE_NONE => array(array('tid' => $root)));
       $context['results']['success'] = $media->fid;
-      file_save($media);
+      $destination = $dir . $media->filename;
+      file_move($media, $destination, FILE_EXISTS_RENAME);
     }
   }
   // increment start
@@ -45,7 +46,7 @@ function media_browser_plus_folder_media_import($root, &$context) {
   $context['sandbox']['max'] = $media_count;
   $context['sandbox']['progress'] = $media_start;
   // and other context values
-  $context['message'] = "Checking...(" . $context['sandbox']['progress'] . "/" . $context['sandbox']['max'] . ") ";
+  $context['message'] = t('Checking') . '...(' . $context['sandbox']['progress'] . '/' . $context['sandbox']['max'] . ') ';
   if ($context['sandbox']['progress'] < $context['sandbox']['max']) {
     $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
   }
@@ -60,8 +61,9 @@ function media_browser_plus_folder_media_import($root, &$context) {
  */
 function media_browser_plus_folder_media_import_finished($success, $results, $operations) {
   if ($success) {
-    drupal_set_message('Successful put all "unfolderized" media items into "Media Root" folder');
-  } else {
+    drupal_set_message(t('Successful put all "unfolderized" media items into "Media Root" folder'));
+  }
+  else {
     drupal_set_message(t('Error during media batch'), 'error');
   }
   variable_del('media_folder_import_start');
