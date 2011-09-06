@@ -577,7 +577,7 @@ function media_browser_plus_submit($form, &$form_state) {
  */
 function media_browser_plus_edit_file_submit($form, &$form_state) {
   $media = $form_state['file'];
-  $folder_id = $file->field_folder[LANGUAGE_NONE][0]['tid'];
+  $folder_id = $media->field_folder[LANGUAGE_NONE][0]['tid'];
   // Only save it if the folder id is changed
   if ($form['field_folder'][LANGUAGE_NONE]['#default_value'][0] != $folder_id) {
     media_browser_plus_file_move($folder_id, $media);
