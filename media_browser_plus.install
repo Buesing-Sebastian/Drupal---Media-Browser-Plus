@@ -134,11 +134,11 @@ function media_browser_plus_enable() {
   variable_set('media_media_per_page', 30);
   variable_set('media_grid_window_height', 400);
   variable_set('media_page_items_per_page', 10);
-  variable_set('media_root_folde', 'media');
+  variable_set('media_root_folder', 'media');
   // create the media folder
   $dir = variable_get('file_default_scheme', 'public') . '://media/';
   file_prepare_directory($dir, FILE_CREATE_DIRECTORY);
-  $term = media_browser_plus_get_media_root_folder(true);
+  $term = media_browser_plus_get_media_root_folder(TRUE);
   if (is_object($term)) {
     // load all media and apply tid of folder if none set
     variable_set('media_folder_import_start', 0);
