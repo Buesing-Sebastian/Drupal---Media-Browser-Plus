@@ -300,7 +300,7 @@ function media_browser_plus_change_folder($form, &$form_state) {
 /**
  * function called by the JS Fronted via AJAX Request to get the media list for a given folder
  */
-function media_browser_plus_thumbnailsJSON() {
+function media_browser_plus_thumbnails_json() {
   if (isset($_GET['folder'])) {
     $folder = (int) (str_replace("folder_load_", "", $_GET['folder']));
     // create conditions
@@ -343,6 +343,47 @@ function media_browser_plus_thumbnailsJSON() {
   }
 }
 
+/**
+ * function called by the JS Fronted via AJAX Request to filter media results
+ */
+function media_browser_plus_filter_json() {
+  if (strpos($_GET['filter'], 'clear')) {
+    unset($_SESSION['media-filter']);
+  }
+  if (!isset($_SESSION['media-filter'])) {
+    $folders = _media_browser_plus_folder_list();
+    foreach ($folders as $id => $folder) {
+      $session_folders[] = $id;
+    }
+    $types = media_type_get_types();
+    foreach ($types as $value => $type) {
+      $media_types[] = $value;
+    }
+    $_SESSION['media-filter']['type'] = implode(',', $media_types);
+    $_SESSION['media-filter']['include_subfolders'] = NULL;
+    $_SESSION['media-filter']['field_folder'] = $session_folders;
+    $_SESSION['media-filter']['filename'] = FALSE;
+    $_SESSION['media-filter']['field_tags'] = array();
+  }
+
+  
+  if (strpos($_GET['filter'], 'filename')) {
+    $_SESSION['media-filter']['filename'] = empty($_GET['text']) ? NULL : check_plain($_GET['text']);
+  }
+  elseif (strpos($_GET['filter'], 'tags')) {
+    $_SESSION['media-filter']['field_tags'] = array();
+    $terms = taxonomy_get_term_by_name($_GET['text']);
+    foreach ($terms as $id => $object) {
+      $tid = $id;
+    }
+    $_SESSION['media-filter']['field_tags'][] = isset($tid) ? $tid : NULL;
+  }
+  foreach (_media_browser_plus_folder_list() as $id => $name) {
+    $data[$id] = (_media_browser_plus_folder_empty($id)) ? '' : 'emptyFolder';
+  }
+
+  return drupal_json_output($data);
+}
 /**
  * Implements hook_form_FORM_ID_alter().
  */
@@ -477,6 +518,20 @@ function media_browser_plus_form_media_internet_add_alter(&$form, &$form_state) 
   // Add an additional form submission callback that fires after the default.
   media_browser_plus_form_media_add_upload_alter($form, $form_state);
 }
+
+/**
+ * Menu callback.Autocomplete media entity's filename.
+ */
+function media_browser_plus_autocomplete_filename($string) {
+  $matches = array();
+  $results = db_query('SELECT filename FROM {file_managed} WHERE filename LIKE :filename LIMIT 0,10', array(':filename' => '%' . $string . '%'));
+  foreach ($results as $result) {
+    $name = check_plain($result->filename);
+    $matches[$name] = $name;
+  }
+  drupal_json_output($matches);
+}
+
 
 /**
  * Form element validate handler for taxonomy term autocomplete element.
@@ -733,6 +788,18 @@ function _media_browser_plus_folder_form() {
  * implement hook_menu()
  */
 function media_browser_plus_menu() {
+  $items['media/autocomplete/filename'] = array(
+    'title' => 'Autocomplete media filename',
+    'page callback' => 'media_browser_plus_autocomplete_filename',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/content/media/filterJSON'] = array(
+    'title' => 'Load Media Entities',
+    'page callback' => 'media_browser_plus_filter_json',
+    'access callback' => 'media_access',
+    'access arguments' => array('preview')
+  );
   $items['admin/content/media/change_folder'] = array(
     'title' => 'Change Folder',
     'page callback' => 'drupal_get_form',
@@ -753,7 +820,7 @@ function media_browser_plus_menu() {
   );
   $items['admin/content/media/thumbnailsJSON'] = array(
     'title' => 'Load Media Entities',
-    'page callback' => 'media_browser_plus_thumbnailsJSON',
+    'page callback' => 'media_browser_plus_thumbnails_json',
     'access callback' => 'media_access',
     'access arguments' => array('preview')
   );
@@ -1794,6 +1861,36 @@ function media_browser_plus_grid_view_form($library_mode = FALSE, $multiselect =
     );
   $form['admin']['files']['#prefix'] = '<div class="media-display-thumbnails media-clear clearfix">' .
     '<ul class="media-list-thumbnails" style="height:' . variable_get('media_grid_window_height') . 'px;">';
+  $tags = array(
+    '#attributes' => array('id' => 'media-field-tags-filter'),
+    '#type' => 'textfield',
+    '#field_name' => 'field_tags',
+    '#columns' => array('tid'),
+    '#value' => check_plain(taxonomy_term_load($_SESSION['media-filter']['field_tags'][0])->name),
+    '#title' => 'Tags',
+    '#size' => 20,
+    '#required' => FALSE,
+    '#delta' => 0,
+    '#language' => LANGUAGE_NONE,
+    '#autocomplete_path' => 'taxonomy/autocomplete/field_tags',
+    '#element_validate' => array('media_browser_plus_prepare_taxonomy_autocomplete_validate', 'taxonomy_autocomplete_validate'),
+  );
+  $filename = array(
+    '#attributes' => array('id' => 'media-filename-filter'),
+    '#type' => 'textfield',
+    '#title' => 'Filename',
+    '#value' => check_plain($_SESSION['media-filter']['filename']),
+    '#size' => 30,
+    '#required' => FALSE,
+    '#delta' => 0,
+    '#language' => LANGUAGE_NONE,
+    '#autocomplete_path' => 'media/autocomplete/filename',
+  );
+  $clear = array(
+    '#attributes' => array('id' => 'media-clear-filter'),
+    '#type' => 'submit',
+    '#value' => 'Clear filters',
+  );
   // setting up the header
   $header = array(
     array(
@@ -1801,7 +1898,8 @@ function media_browser_plus_grid_view_form($library_mode = FALSE, $multiselect =
       'width' => '200',
     ),
     array(
-      'data' => t('Media Files'),
+      'data' => drupal_render($tags) . drupal_render($filename) . drupal_render($clear),
+      'class' => 'container-inline',
       'width' => '*',
     ),
   );

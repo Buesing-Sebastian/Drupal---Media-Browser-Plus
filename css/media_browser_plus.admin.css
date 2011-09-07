@@ -12,8 +12,12 @@
   vertical-align: top;
 }
 
-#media_folder_table .media-list-thumbnails{
-  overflow:auto;
+#media_folder_table .media-list-thumbnails {
+  overflow: auto;
+}
+
+#media_folder_table th .form-item, #media_folder_table th .form-submit {
+  margin-bottom: 0;
 }
 
 #folder ul.hidden {

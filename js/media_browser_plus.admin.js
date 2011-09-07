@@ -21,6 +21,15 @@
         Drupal.behaviors.media_browser_folders.loadFolderContents($item, 0);
         return false;
       });
+      $('input#media-field-tags-filter, input#media-filename-filter').change(function() {
+        Drupal.behaviors.media_browser_folders.filterMedia($(this));
+        return false;
+      });
+      $('input#media-clear-filter').click(function() {
+        Drupal.behaviors.media_browser_folders.filterMedia($(this));
+        $('input#media-field-tags-filter, input#media-filename-filter').val('');
+        return false;
+      });
       if(Drupal.settings.media_browser_plus.folder_dnd_enabled) {
         $("div.folder_load").droppable({
           accept: "#media-thumb-list > li",
@@ -223,6 +232,13 @@
       // redo the pages menu
       Drupal.settings.media_browser_plus.page = $page;
     },
+    filterMedia: function ($item) {
+      $("#media-thumb-list > li").remove();
+      var loading = '<li id="loading_media"><img src="'+Drupal.settings.media_browser_plus.images_url+'loading.gif" /><li>';
+      $loading = $(loading);
+      $loading.appendTo('#media-thumb-list');
+      $.getJSON(Drupal.settings.media_browser_plus.url + "?q=admin/content/media/filterJSON", {filter: $item.attr('id'), text: $item.val()}, Drupal.behaviors.media_browser_folders.mediaFiltered);
+    },
     addPageItem: function ($folder, $page, $title) {
       $page_item = '<div class="media_paging_page';
       if(Drupal.settings.media_browser_plus.page == $page)
@@ -299,6 +315,15 @@
       if($pages > $i){
         Drupal.behaviors.media_browser_folders.addPageItem(folder, $i, "...");
       }
+    },
+    mediaFiltered: function (data) {
+      $(data).each(function(index, value){
+        if (value != '') {
+          $('#folder_load_' + index).addClass(value);
+        }
+        else $('#folder_load_' + index).removeClass('emptyFolder');
+      });
+      $('.folder_load').click();
     },
     toggleSubfolders: function (event) {
       // Grab folder.
