@@ -317,13 +317,14 @@ function media_browser_plus_folder_save_folder($form_state) {
   // parse values
   $vocabulary = taxonomy_vocabulary_machine_name_load('media_folders');
   $term = new stdClass();
-  $term->name = check_plain($form_state['values']['name']);
 
   // if update
   if (isset($form_state['values']['folder_id'])) {
     $term->tid = (int) $form_state['values']['folder_id'];
     $source = media_browser_plus_construct_dir_path($term);
   }
+  
+  $term->name = check_plain($form_state['values']['name']);
 
   $term->description = check_plain($form_state['values']['description']);
   $term->parent = (int) $form_state['values']['pid'];
@@ -343,7 +344,28 @@ function media_browser_plus_folder_save_folder($form_state) {
     case (SAVED_UPDATED):
       // update physical folder
       $destination = media_browser_plus_construct_dir_path($term);
-      media_browser_plus_move_physical_folder($source, $destination);
+      if($source != $destination) {
+        media_browser_plus_move_physical_folder($source, $destination);
+        // update files in folder and subfolders
+        // get folders
+        $folders = array($term->tid);
+        $sub_folders = taxonomy_get_children($term->tid);
+        // add subfolders if found
+        foreach ($sub_folders as $sf) {
+          $folders[] = $sf->tid;
+        }
+        $path = drupal_get_path('module', 'media_browser_plus');
+        // set batch
+        $batch = array(
+          'title' => t('Updating Media'),
+          'operations' => array(
+            array('media_browser_plus_folder_update_file_locations_batch', array($folders)),
+          ),
+          'finished' => 'media_browser_plus_folder_update_file_locations_batch_complete',
+          'file' => $path . '/includes/media_browser_plus.folders.inc'
+        );
+        batch_set($batch);
+      }
       drupal_set_message(t('Folder %term_name updated successfully', array('%term_name' => $term->name)));
     break;
     case (FALSE):
@@ -390,4 +412,70 @@ function media_browser_plus_folder_theme_folder_weight_column($weight, $folder_i
   $output .= '<input type="hidden" id="edit-folder_id' . $folder_id . '-folder_id" class="folder-folder_id" value="' . $folder_id . '" name="folder_id:' . $folder_id . '[folder_id]" />';
   // add return
   return $output;
+}
+
+/**
+ * Batch function that updates all media URIs inside the given folders
+ *
+ * @param type $folders
+ * @param type $context
+ */
+function media_browser_plus_folder_update_file_locations_batch($folders, &$context) {
+  // config
+  $per_page = 25;
+  $conditions = array();
+  $conditions[] = array("field" => array("field_folder", "tid", $folders, "IN"));
+  $options = array('apply_filter' => FALSE, 'count_only' => TRUE, 'conditions' => $conditions);
+  $media_count = media_browser_plus_load_multiple($options);
+  
+  if (empty($context['sandbox'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = $media_count;
+  }
+  // look how far we got and where we have to resume
+  $media_start = $context['sandbox']['progress'];
+  $page = $media_start == 0 ? 0 : bcdiv($media_start, $per_page, 0);
+  //
+  if (!isset($context['results'])) {
+    $context['results'] = array('success' => array(), 'errors' => array());
+  }
+  $order = array(array("property" => array("fid", "ASC")));
+  $attributes = array('apply_filter' => FALSE, 'paging' => TRUE, 'per_page' => $per_page, 'page' => $page, 'order' => $order, 'conditions' => $conditions);
+  $media_query = media_browser_plus_load_multiple($attributes);
+  // Checking media
+  foreach ($media_query->results as $media) {
+    if (isset($media->field_folder[LANGUAGE_NONE][0]['tid'])) {
+      $path = media_browser_plus_construct_dir_path(taxonomy_term_load($media->field_folder[LANGUAGE_NONE][0]['tid']));
+      $media->uri = $path . '/' . array_pop(explode('/', $media->uri));
+      file_save($media);
+    }
+  }
+  // increment start
+  $media_start = $media_start + $per_page;
+  // make sure start is not above max (for progress)
+  $media_start = $media_start > $media_count ? $media_count : $media_start;
+  // set sandbox value
+  $context['sandbox']['max'] = $media_count;
+  $context['sandbox']['progress'] = $media_start;
+  // and other context values
+  $context['message'] = t('Updating') . '...(' . $context['sandbox']['progress'] . '/' . $context['sandbox']['max'] . ') ';
+  if ($context['sandbox']['progress'] < $context['sandbox']['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+  }
+}
+
+/**
+ * Called on completion of the batch
+ *
+ * @param type $success
+ * @param type $results
+ * @param type $operations
+ */
+function media_browser_plus_folder_update_file_locations_batch_complete($success, $results, $operations) {
+  if ($success) {
+    drupal_set_message(t('Successfully updated all URIs'));
+  }
+  else {
+    drupal_set_message(t('Error during media batch'), 'error');
+  }
 }

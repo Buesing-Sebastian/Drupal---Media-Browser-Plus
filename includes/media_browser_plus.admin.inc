@@ -14,13 +14,14 @@
 function media_browser_plus_folder_media_import($root, $dir, &$context) {
   // config
   $per_page = 50;
+  $media_count = media_browser_plus_load_multiple(array('apply_filter' => FALSE, 'count_only' => TRUE));
+  
   if (empty($context['sandbox'])) {
     $context['sandbox']['progress'] = 0;
     $context['sandbox']['max'] = $media_count;
   }
   // look how far we got and where we have to resume
   $media_start = $context['sandbox']['progress'];
-  $media_count = media_browser_plus_load_multiple(array('apply_filter' => FALSE, 'count_only' => TRUE));
   $page = $media_start == 0 ? 0 : bcdiv($media_start, $per_page, 0);
   //
   if (!isset($context['results'])) {
