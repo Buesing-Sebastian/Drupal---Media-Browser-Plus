@@ -704,7 +704,7 @@ function media_browser_plus_menu(){
     'title' => 'Change Folder',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('media_browser_plus_change_folder'),
-    'file' => 'media_browser_plus.module',
+    'type' => MENU_CALLBACK,
     'access callback' => 'media_access',
     'access arguments' => array('edit')
   );
