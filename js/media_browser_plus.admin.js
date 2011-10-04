@@ -1,6 +1,8 @@
 (function ($) {
   Drupal.behaviors.media_browser_folders = {
     attach: function (context) {
+      // Show hided links from media module
+      $('.action-links li').show();
       var gallery = $('#media-thumb-list');
       var selectedPreviewIndex = 0;
       var selectedPreviewItems = new Array();
@@ -21,11 +23,11 @@
         Drupal.behaviors.media_browser_folders.loadFolderContents($item, 0);
         return false;
       });
-      $('input#media-field-tags-filter, input#media-filename-filter').change(function() {
+      $('input#media-field-tags-filter, input#media-filename-filter').bind('blur', function() {
         Drupal.behaviors.media_browser_folders.filterMedia($(this));
         return false;
       });
-      $('input#media-clear-filter').click(function() {
+      $('input#media-clear-filter').bind('click',function() {
         Drupal.behaviors.media_browser_folders.filterMedia($(this));
         $('input#media-field-tags-filter, input#media-filename-filter').val('');
         return false;
@@ -181,6 +183,9 @@
       $media = $(data);
       Drupal.behaviors.media_browser_folders.performMediaBasketSelection($media.parent());
     },
+    clickFolder: function (id) {
+      $('#folder_load_' + id).click();
+    },
     dropSelectedMedia : function (event , ui) {
       $clone = $(ui.draggable);
       $media = $('li[id="'+$clone.attr('id')+'"]', $('#media-thumb-list'));
@@ -317,13 +322,23 @@
       }
     },
     mediaFiltered: function (data) {
-      $(data).each(function(index, value){
-        if (value != '') {
-          $('#folder_load_' + index).addClass(value);
-        }
-        else $('#folder_load_' + index).removeClass('emptyFolder');
+      var first = '';
+      $(data).each(function(){
+        $.each(this, function(index, value) {
+          if (value) {
+            $('#folder_load_' + index).addClass(value);
+            $('.tid_' + index).addClass('empty');
+          }
+          else {
+            $('#folder_load_' + index).removeClass('emptyFolder');
+            $('.tid_' + index).removeClass('empty');
+            // Keep the first folder id with contents so we get user there
+            if (!first) {
+              Drupal.behaviors.media_browser_folders.clickFolder(index);
+            }
+          }
+        });
       });
-      $('.folder_load').click();
     },
     toggleSubfolders: function (event) {
       // Grab folder.

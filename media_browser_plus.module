@@ -1122,7 +1122,7 @@ function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, 
     $buffer .= '<li class="media_folder';
     if ($has_children) {
       $buffer .= ' parent">';
-      $buffer .= '<div class="folder';
+      $buffer .= '<div class="folder tid_' . $item->tid;
       $buffer .= $has_media ? '' : ' emptyParent';
       $buffer .= ' folder-children-toggle">' .
          '<img src="' . $path . '/images/pixel.gif" border="0" alt="">' .
@@ -1135,7 +1135,7 @@ function _media_browser_plus_folder_hierarchy_list_helper($parents, &$children, 
     }
     else {
       $buffer .= '">';
-      $buffer .= '<div class="folder';
+      $buffer .= '<div class="folder tid_' . $item->tid;
       $buffer .= $has_media ? '' : ' empty';
       $buffer .= ' ">' .
         '<img src="' . $path . '/images/pixel.gif" border="0" alt="">' .
@@ -1322,8 +1322,10 @@ function media_browser_plus_load_multiple($variables) {
   }
   // parse conditions
   foreach ($params['conditions'] as $condition) {
+    // get rid of the strict warning error
+    $cond = array_keys($condition);
     // look what type we have
-    switch (array_pop(array_keys($condition))) {
+    switch (array_pop($cond)) {
       case ('entity'):
         $query->entityCondition($condition['entity'][0],
           $condition['entity'][1],
@@ -1344,8 +1346,10 @@ function media_browser_plus_load_multiple($variables) {
   }
   // parse order array
   foreach ($params['order'] as $condition) {
+    // get rid of strict warning
+    $cond = array_keys($condition);
     // look what type we have
-    switch (array_pop(array_keys($condition))) {
+    switch (array_pop($cond)) {
       case ('entity'):
         $query->entityOrderBy($condition['entity'][0],
           $condition['entity'][1]);
@@ -1866,7 +1870,7 @@ function media_browser_plus_grid_view_form($library_mode = FALSE, $multiselect =
     '#type' => 'textfield',
     '#field_name' => 'field_tags',
     '#columns' => array('tid'),
-    '#value' => check_plain(taxonomy_term_load($_SESSION['media-filter']['field_tags'][0])->name),
+    '#value' => isset($_SESSION['media-filter']['field_tags'][0]) ? check_plain(taxonomy_term_load($_SESSION['media-filter']['field_tags'][0])->name) : '',
     '#title' => 'Tags',
     '#size' => 20,
     '#required' => FALSE,
@@ -1879,7 +1883,7 @@ function media_browser_plus_grid_view_form($library_mode = FALSE, $multiselect =
     '#attributes' => array('id' => 'media-filename-filter'),
     '#type' => 'textfield',
     '#title' => 'Filename',
-    '#value' => check_plain($_SESSION['media-filter']['filename']),
+    '#value' => isset($_SESSION['media-filter']['filename']) ? check_plain($_SESSION['media-filter']['filename']) : '',
     '#size' => 30,
     '#required' => FALSE,
     '#delta' => 0,
