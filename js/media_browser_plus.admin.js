@@ -24,7 +24,9 @@
         return false;
       });
       $('input#media-field-tags-filter, input#media-filename-filter').bind('blur', function() {
-        Drupal.behaviors.media_browser_folders.filterMedia($(this));
+        if ($(this).val()) {
+          Drupal.behaviors.media_browser_folders.filterMedia($(this));
+        }
         return false;
       });
       $('input#media-clear-filter').bind('click',function() {
