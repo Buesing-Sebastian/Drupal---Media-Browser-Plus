@@ -185,8 +185,9 @@
       $media = $(data);
       Drupal.behaviors.media_browser_folders.performMediaBasketSelection($media.parent());
     },
-    clickFolder: function (id) {
-      $('#folder_load_' + id).click();
+     clickFolder: function (id) {
+      $('#folder_load_' + id).trigger('click');
+      $('#folder_load_' + id).addClass('selectedFolder');
     },
     dropSelectedMedia : function (event , ui) {
       $clone = $(ui.draggable);
@@ -324,8 +325,8 @@
       }
     },
     mediaFiltered: function (data) {
-      var first = '';
       $(data).each(function(){
+      var first = false;
         $.each(this, function(index, value) {
           if (value) {
             $('#folder_load_' + index).addClass(value);
@@ -337,6 +338,7 @@
             // Keep the first folder id with contents so we get user there
             if (!first) {
               Drupal.behaviors.media_browser_folders.clickFolder(index);
+              first = true;console.log(first);
             }
           }
         });
