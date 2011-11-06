@@ -8,7 +8,7 @@
       // instead remove the obvious annoying parts
       $('#toolbar').remove();
       $('#branding').remove();
-      //
+
       if(Drupal.settings.media_browser_plus.autoclose)
         parent.jQuery.fn.colorbox.close();
     }
